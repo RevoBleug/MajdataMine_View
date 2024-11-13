@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-#nullable enable
+
 public class MultTouchHandler : MonoBehaviour
 {
     private readonly List<TouchDrop>[] touchSlots = new List<TouchDrop>[33]; // C,A1-8,B1-8,D1-8,E1-8
@@ -49,11 +49,8 @@ public class MultTouchHandler : MonoBehaviour
     public void cancelTouch(TouchDrop obj)
     {
         var areaIndex = getAreaIndex(obj.areaPosition, obj.startPosition);
-        var touchSlot = touchSlots[areaIndex];
+        touchSlots[areaIndex].RemoveAt(0);
 
-        if (touchSlot.Count != 0)
-            touchSlot.RemoveAt(0);
-
-        foreach (var each in touchSlot) each.layerDown();
+        foreach (var each in touchSlots[areaIndex]) each.layerDown();
     }
 }

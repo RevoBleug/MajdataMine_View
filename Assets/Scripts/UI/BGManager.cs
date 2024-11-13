@@ -18,11 +18,9 @@ public class BGManager : MonoBehaviour
 
     private VideoPlayer videoPlayer;
 
-    private float originalScaleX;
     // Start is called before the first frame update
     private void Start()
     {
-        originalScaleX = gameObject.transform.localScale.x;
         spriteRender = GetComponent<SpriteRenderer>();
         videoPlayer = GetComponent<VideoPlayer>();
         rawImage = GameObject.Find("Jacket").GetComponent<RawImage>();
@@ -108,7 +106,7 @@ public class BGManager : MonoBehaviour
         yield return sprite = SpriteLoader.LoadSpriteFromFile(path);
         rawImage.texture = sprite.texture;
         spriteRender.sprite = sprite;
-        var scale = 1140f / sprite.texture.width;
+        var scale = 1080f / sprite.texture.width;
         gameObject.transform.localScale = new Vector3(scale, scale, scale);
     }
 
@@ -133,7 +131,6 @@ public class BGManager : MonoBehaviour
         var scale = videoPlayer.height / (float)videoPlayer.width;
         spriteRender.sprite =
             Sprite.Create(new Texture2D(1080, 1080), new Rect(0, 0, 1080, 1080), new Vector2(0.5f, 0.5f));
-        
-        gameObject.transform.localScale = new Vector3(originalScaleX, originalScaleX * scale);
+        gameObject.transform.localScale = new Vector3(1f, scale);
     }
 }

@@ -7,47 +7,51 @@ public class CustomSkin : MonoBehaviour
     public Sprite Tap_Each;
     public Sprite Tap_Break;
     public Sprite Tap_Ex;
+    public Sprite Tap_Mine;
 
     public Sprite Slide;
     public Sprite Slide_Each;
     public Sprite Slide_Break;
+    public Sprite Slide_Mine;
     public Sprite[] Wifi = new Sprite[11];
     public Sprite[] Wifi_Each = new Sprite[11];
     public Sprite[] Wifi_Break = new Sprite[11];
+    public Sprite[] Wifi_Mine = new Sprite[11];
 
     public Sprite Star;
     public Sprite Star_Double;
     public Sprite Star_Each;
     public Sprite Star_Each_Double;
     public Sprite Star_Break;
+    public Sprite Star_Mine_Double;
     public Sprite Star_Break_Double;
     public Sprite Star_Ex;
     public Sprite Star_Ex_Double;
+    public Sprite Star_Mine;
 
     public Sprite Hold;
-    public Sprite Hold_On;
-    public Sprite Hold_Off;
     public Sprite Hold_Each;
-    public Sprite Hold_Each_On;
     public Sprite Hold_Ex;
     public Sprite Hold_Break;
-    public Sprite Hold_Break_On;
+    public Sprite Hold_Mine;
 
-    public Sprite[] Just = new Sprite[36];
-    public Sprite[] JudgeText = new Sprite[5];
+    public Sprite[] Just = new Sprite[6];
+    public Sprite JudgeText_Normal;
     public Sprite JudgeText_Break;
-    public Sprite FastText;
-    public Sprite LateText;
 
     public Sprite Touch;
+    public Sprite Touch_Mine;
     public Sprite Touch_Each;
     public Sprite TouchPoint;
+    public Sprite TouchPoint_Mine;
     public Sprite TouchPoint_Each;
     public Sprite TouchJust;
     public Sprite[] TouchBorder = new Sprite[2];
     public Sprite[] TouchBorder_Each = new Sprite[2];
+    public Sprite[] TouchBorder_Mine = new Sprite[2];
 
     public Sprite[] TouchHold = new Sprite[5];
+    public Sprite[] TouchHold_Mine = new Sprite[5];
 
     public Texture2D test;
     private SpriteRenderer Outline;
@@ -65,15 +69,18 @@ public class CustomSkin : MonoBehaviour
         Tap_Each = SpriteLoader.LoadSpriteFromFile(path + "/tap_each.png");
         Tap_Break = SpriteLoader.LoadSpriteFromFile(path + "/tap_break.png");
         Tap_Ex = SpriteLoader.LoadSpriteFromFile(path + "/tap_ex.png");
+        Tap_Mine = SpriteLoader.LoadSpriteFromFile(path + "/tap_mine.png");
 
         Slide = SpriteLoader.LoadSpriteFromFile(path + "/slide.png");
         Slide_Each = SpriteLoader.LoadSpriteFromFile(path + "/slide_each.png");
         Slide_Break = SpriteLoader.LoadSpriteFromFile(path + "/slide_break.png");
+        Slide_Mine = SpriteLoader.LoadSpriteFromFile(path + "/slide_mine.png");
         for (var i = 0; i < 11; i++)
         {
             Wifi[i] = SpriteLoader.LoadSpriteFromFile(path + "/wifi_" + i + ".png");
             Wifi_Each[i] = SpriteLoader.LoadSpriteFromFile(path + "/wifi_each_" + i + ".png");
             Wifi_Break[i] = SpriteLoader.LoadSpriteFromFile(path + "/wifi_break_" + i + ".png");
+            Wifi_Mine[i] = SpriteLoader.LoadSpriteFromFile(path + "/wifi_mine_" + i + ".png");
         }
 
         Star = SpriteLoader.LoadSpriteFromFile(path + "/star.png");
@@ -84,29 +91,15 @@ public class CustomSkin : MonoBehaviour
         Star_Break_Double = SpriteLoader.LoadSpriteFromFile(path + "/star_break_double.png");
         Star_Ex = SpriteLoader.LoadSpriteFromFile(path + "/star_ex.png");
         Star_Ex_Double = SpriteLoader.LoadSpriteFromFile(path + "/star_ex_double.png");
+        Star_Mine = SpriteLoader.LoadSpriteFromFile(path + "/star_mine.png");
+        Star_Mine_Double = SpriteLoader.LoadSpriteFromFile(path + "/star_mine_double.png");
 
         var border = new Vector4(0, 58, 0, 58);
-        Hold = SpriteLoader.LoadSpriteFromFile(path + "/hold.png", border);        
+        Hold = SpriteLoader.LoadSpriteFromFile(path + "/hold.png", border);
+        Hold_Mine = SpriteLoader.LoadSpriteFromFile(path + "/hold_mine.png", border);
         Hold_Each = SpriteLoader.LoadSpriteFromFile(path + "/hold_each.png", border);
-        Hold_Each_On = SpriteLoader.LoadSpriteFromFile(path + "/hold_each_on.png", border);
         Hold_Ex = SpriteLoader.LoadSpriteFromFile(path + "/hold_ex.png", border);
         Hold_Break = SpriteLoader.LoadSpriteFromFile(path + "/hold_break.png", border);
-        Hold_Break_On = SpriteLoader.LoadSpriteFromFile(path + "/hold_break_on.png", border);
-
-        if (File.Exists(Path.Combine(path, "hold_on.png")))
-            Hold_On = SpriteLoader.LoadSpriteFromFile(path + "/hold_on.png", border);
-        else
-            Hold_On = Hold;
-        Hold_Off = SpriteLoader.LoadSpriteFromFile(path + "/hold_off.png", border);
-        if (File.Exists(Path.Combine(path, "hold_each_on.png")))
-            Hold_Each_On = SpriteLoader.LoadSpriteFromFile(path + "/hold_each_on.png", border);
-        else
-            Hold_Each_On = Hold_Each;
-
-        if (File.Exists(Path.Combine(path, "hold_break_on.png")))
-            Hold_Break_On = SpriteLoader.LoadSpriteFromFile(path + "/hold_break_on.png", border);
-        else
-            Hold_Break_On = Hold_Break;
 
         Just[0] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_r.png");
         Just[1] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_r.png");
@@ -115,55 +108,15 @@ public class CustomSkin : MonoBehaviour
         Just[4] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_l.png");
         Just[5] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_d.png");
 
-        Just[6] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_r_fast_gr.png");
-        Just[7] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_r_fast_gr.png");
-        Just[8] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_u_fast_gr.png");
-        Just[9] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_l_fast_gr.png");
-        Just[10] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_l_fast_gr.png");
-        Just[11] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_d_fast_gr.png");
-
-        Just[12] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_r_fast_gd.png");
-        Just[13] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_r_fast_gd.png");
-        Just[14] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_u_fast_gd.png");
-        Just[15] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_l_fast_gd.png");
-        Just[16] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_l_fast_gd.png");
-        Just[17] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_d_fast_gd.png");
-
-        Just[18] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_r_late_gr.png");
-        Just[19] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_r_late_gr.png");
-        Just[20] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_u_late_gr.png");
-        Just[21] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_l_late_gr.png");
-        Just[22] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_l_late_gr.png");
-        Just[23] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_d_late_gr.png");
-
-        Just[24] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_r_late_gd.png");
-        Just[25] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_r_late_gd.png");
-        Just[26] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_u_late_gd.png");
-        Just[27] = SpriteLoader.LoadSpriteFromFile(path + "/just_curv_l_late_gd.png");
-        Just[28] = SpriteLoader.LoadSpriteFromFile(path + "/just_str_l_late_gd.png");
-        Just[29] = SpriteLoader.LoadSpriteFromFile(path + "/just_wifi_d_late_gd.png");
-
-        Just[30] = SpriteLoader.LoadSpriteFromFile(path + "/miss_curv_r.png");
-        Just[31] = SpriteLoader.LoadSpriteFromFile(path + "/miss_str_r.png");
-        Just[32] = SpriteLoader.LoadSpriteFromFile(path + "/miss_wifi_u.png");
-        Just[33] = SpriteLoader.LoadSpriteFromFile(path + "/miss_curv_l.png");
-        Just[34] = SpriteLoader.LoadSpriteFromFile(path + "/miss_str_l.png");
-        Just[35] = SpriteLoader.LoadSpriteFromFile(path + "/miss_wifi_d.png");
-
-        JudgeText[0] = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_miss.png");
-        JudgeText[1] = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_good.png");
-        JudgeText[2] = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_great.png");
-        JudgeText[3] = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_perfect.png");
-        JudgeText[4] = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_cPerfect.png");
+        JudgeText_Normal = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_normal.png");
         JudgeText_Break = SpriteLoader.LoadSpriteFromFile(path + "/judge_text_break.png");
-
-        FastText = SpriteLoader.LoadSpriteFromFile(path + "/fast.png");
-        LateText = SpriteLoader.LoadSpriteFromFile(path + "/late.png");
 
         Touch = SpriteLoader.LoadSpriteFromFile(path + "/touch.png");
         Touch_Each = SpriteLoader.LoadSpriteFromFile(path + "/touch_each.png");
+        Touch_Mine = SpriteLoader.LoadSpriteFromFile(path + "/touch_mine.png");
         TouchPoint = SpriteLoader.LoadSpriteFromFile(path + "/touch_point.png");
         TouchPoint_Each = SpriteLoader.LoadSpriteFromFile(path + "/touch_point_each.png");
+        TouchPoint_Mine = SpriteLoader.LoadSpriteFromFile(path + "/touch_point_mine.png");
 
         TouchJust = SpriteLoader.LoadSpriteFromFile(path + "/touch_just.png");
 
@@ -171,10 +124,16 @@ public class CustomSkin : MonoBehaviour
         TouchBorder[1] = SpriteLoader.LoadSpriteFromFile(path + "/touch_border_3.png");
         TouchBorder_Each[0] = SpriteLoader.LoadSpriteFromFile(path + "/touch_border_2_each.png");
         TouchBorder_Each[1] = SpriteLoader.LoadSpriteFromFile(path + "/touch_border_3_each.png");
+        TouchBorder_Mine[0] = SpriteLoader.LoadSpriteFromFile(path + "/touch_border_2_mine.png");
+        TouchBorder_Mine[1] = SpriteLoader.LoadSpriteFromFile(path + "/touch_border_3_mine.png");
 
-        for (var i = 0; i < 4; i++) TouchHold[i] = SpriteLoader.LoadSpriteFromFile(path + "/touchhold_" + i + ".png");
+        for (var i = 0; i < 4; i++)
+        {
+            TouchHold[i] = SpriteLoader.LoadSpriteFromFile(path + "/touchhold_" + i + ".png");
+            TouchHold_Mine[i] = SpriteLoader.LoadSpriteFromFile(path + "/touchhold_" + i + "_mine.png");
+        }
         TouchHold[4] = SpriteLoader.LoadSpriteFromFile(path + "/touchhold_border.png");
-
+        TouchHold_Mine[4] = SpriteLoader.LoadSpriteFromFile(path + "/touchhold_border_mine.png");
         Debug.Log(test);
     }
 

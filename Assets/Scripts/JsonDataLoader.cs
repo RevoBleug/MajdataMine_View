@@ -1,15 +1,9 @@
-﻿using Assets.Scripts.Types;
-using Assets.Scripts.Notes;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Threading.Tasks;
-using System.Collections;
-using System.Diagnostics;
-using Assets.Scripts;
 
 public class JsonDataLoader : MonoBehaviour
 {
@@ -22,24 +16,14 @@ public class JsonDataLoader : MonoBehaviour
     public GameObject starPrefab;
     public GameObject touchHoldPrefab;
     public GameObject touchPrefab;
+    public GameObject mineLine;
     public GameObject eachLine;
     public GameObject starLine;
     public GameObject notes;
     public GameObject star_slidePrefab;
     public GameObject[] slidePrefab;
-    public Material breakMaterial;
     public RuntimeAnimatorController BreakShine;
-    public RuntimeAnimatorController JudgeBreakShine;
     public RuntimeAnimatorController HoldShine;
-
-    public NoteLoaderStatus State { get; private set; } = NoteLoaderStatus.Idle;
-    NoteManager noteManager;
-    Task<Majson> jsonLoaderTask = null;
-    Majson loadedData = null;
-    float ignoreOffset = 0;
-    Coroutine noteParserTask = null;
-    Dictionary<int, int> noteIndex = new();
-        Dictionary<SensorType, int> touchIndex = new();
 
     public Text diffText;
     public Text levelText;
@@ -52,7 +36,7 @@ public class JsonDataLoader : MonoBehaviour
 
     private ObjectCounter ObjectCounter;
 
-    private int slideLayer = -1;
+    private int slideLayer = -10000;
     private int noteSortOrder = 0;
 
     private static readonly Dictionary<SimaiNoteType, int> NOTE_LAYER_COUNT = new Dictionary<SimaiNoteType, int>()
@@ -63,6 +47,7 @@ public class JsonDataLoader : MonoBehaviour
         {SimaiNoteType.Touch, 7 },
         {SimaiNoteType.TouchHold, 6 },
     };
+
     private static readonly Dictionary<string, int> SLIDE_PREFAB_MAP = new Dictionary<string, int>()
     {
         {"line3", 0 },
@@ -109,94 +94,6 @@ public class JsonDataLoader : MonoBehaviour
         {"L5", 40 },
     };
 
-    static readonly Dictionary<SensorType, SensorType[]> TOUCH_GROUPS = new()
-    {
-        { SensorType.A1, new SensorType[]{ SensorType.D1, SensorType.D2, SensorType.E1, SensorType.E2 } },
-        { SensorType.A2, new SensorType[]{ SensorType.D2, SensorType.D3, SensorType.E2, SensorType.E3 } },
-        { SensorType.A3, new SensorType[]{ SensorType.D3, SensorType.D4, SensorType.E3, SensorType.E4 } },
-        { SensorType.A4, new SensorType[]{ SensorType.D4, SensorType.D5, SensorType.E4, SensorType.E5 } },
-        { SensorType.A5, new SensorType[]{ SensorType.D5, SensorType.D6, SensorType.E5, SensorType.E6 } },
-        { SensorType.A6, new SensorType[]{ SensorType.D6, SensorType.D7, SensorType.E6, SensorType.E7 } },
-        { SensorType.A7, new SensorType[]{ SensorType.D7, SensorType.D8, SensorType.E7, SensorType.E8 } },
-        { SensorType.A8, new SensorType[]{ SensorType.D8, SensorType.D1, SensorType.E8, SensorType.E1 } },
-
-        { SensorType.D1, new SensorType[]{ SensorType.A1, SensorType.A8, SensorType.E1 } },
-        { SensorType.D2, new SensorType[]{ SensorType.A2, SensorType.A1, SensorType.E2 } },
-        { SensorType.D3, new SensorType[]{ SensorType.A3, SensorType.A2, SensorType.E3 } },
-        { SensorType.D4, new SensorType[]{ SensorType.A4, SensorType.A3, SensorType.E4 } },
-        { SensorType.D5, new SensorType[]{ SensorType.A5, SensorType.A4, SensorType.E5 } },
-        { SensorType.D6, new SensorType[]{ SensorType.A6, SensorType.A5, SensorType.E6 } },
-        { SensorType.D7, new SensorType[]{ SensorType.A7, SensorType.A6, SensorType.E7 } },
-        { SensorType.D8, new SensorType[]{ SensorType.A8, SensorType.A7, SensorType.E8 } },
-
-        { SensorType.E1, new SensorType[]{ SensorType.D1, SensorType.A1, SensorType.A8, SensorType.B1, SensorType.B8 } },
-        { SensorType.E2, new SensorType[]{ SensorType.D2, SensorType.A2, SensorType.A1, SensorType.B2, SensorType.B1 } },
-        { SensorType.E3, new SensorType[]{ SensorType.D3, SensorType.A3, SensorType.A2, SensorType.B3, SensorType.B2 } },
-        { SensorType.E4, new SensorType[]{ SensorType.D4, SensorType.A4, SensorType.A3, SensorType.B4, SensorType.B3 } },
-        { SensorType.E5, new SensorType[]{ SensorType.D5, SensorType.A5, SensorType.A4, SensorType.B5, SensorType.B4 } },
-        { SensorType.E6, new SensorType[]{ SensorType.D6, SensorType.A6, SensorType.A5, SensorType.B6, SensorType.B5 } },
-        { SensorType.E7, new SensorType[]{ SensorType.D7, SensorType.A7, SensorType.A6, SensorType.B7, SensorType.B6 } },
-        { SensorType.E8, new SensorType[]{ SensorType.D8, SensorType.A8, SensorType.A7, SensorType.B8, SensorType.B7 } },
-
-        { SensorType.B1, new SensorType[]{ SensorType.E1, SensorType.E2, SensorType.B8, SensorType.B2, SensorType.A1, SensorType.C } },
-        { SensorType.B2, new SensorType[]{ SensorType.E2, SensorType.E3, SensorType.B1, SensorType.B3, SensorType.A2, SensorType.C } },
-        { SensorType.B3, new SensorType[]{ SensorType.E3, SensorType.E4, SensorType.B2, SensorType.B4, SensorType.A3, SensorType.C } },
-        { SensorType.B4, new SensorType[]{ SensorType.E4, SensorType.E5, SensorType.B3, SensorType.B5, SensorType.A4, SensorType.C } },
-        { SensorType.B5, new SensorType[]{ SensorType.E5, SensorType.E6, SensorType.B4, SensorType.B6, SensorType.A5, SensorType.C } },
-        { SensorType.B6, new SensorType[]{ SensorType.E6, SensorType.E7, SensorType.B5, SensorType.B7, SensorType.A6, SensorType.C } },
-        { SensorType.B7, new SensorType[]{ SensorType.E7, SensorType.E8, SensorType.B6, SensorType.B8, SensorType.A7, SensorType.C } },
-        { SensorType.B8, new SensorType[]{ SensorType.E8, SensorType.E1, SensorType.B7, SensorType.B1, SensorType.A8, SensorType.C } },
-
-        { SensorType.C, new SensorType[]{ SensorType.B1, SensorType.B2, SensorType.B3, SensorType.B4, SensorType.B5, SensorType.B6, SensorType.B7, SensorType.B8} },
-    };
-
-    static Dictionary<string, float> SLIDE_AREA_CONST = new()
-    {
-        { "line3", 0.1919f},
-        { "line4", 0.1793f},
-        { "line5", 0.1629f},
-        { "line6", 0.1793f},
-        { "line7", 0.1919f},
-        { "circle1", 0.7892f},
-        { "circle2", 0.2326f},
-        { "circle3", 0.1550f},
-        { "circle4", 0.1163f},
-        { "circle5", 0.0930f},
-        { "circle6", 0.0775f},
-        { "circle7", 0.0664f},
-        { "circle8", 0.0490f},
-        { "v1", 0.1629f},
-        { "v2", 0.1629f},
-        { "v3", 0.1629f},
-        { "v4", 0.1629f},
-        { "v5", 0.1629f},
-        { "v6", 0.1629f},
-        { "v7", 0.1629f},
-        { "v8", 0.1629f},
-        { "ppqq1", 0.1014f},
-        { "ppqq2", 0.1204f},
-        { "ppqq3", 0.1434f},
-        { "ppqq4", 0.0697f},
-        { "ppqq5", 0.0867f},
-        { "ppqq6", 0.1026f},
-        { "ppqq7", 0.1266f},
-        { "ppqq8", 0.1413f},
-        { "pq1", 0.1021f},
-        { "pq2", 0.1144f},
-        { "pq3", 0.1247f},
-        { "pq4", 0.1436f},
-        { "pq5", 0.1627f},
-        { "pq6", 0.0752f},
-        { "pq7", 0.0984f},
-        { "pq8", 0.1126f},
-        { "s", 0.1054f},
-        { "wifi", 0.1829f},
-        { "L2", 0.0948f},
-        { "L3", 0.0711f},
-        { "L4", 0.0948f},
-        { "L5", 0.1186f},
-    };
-
     private static readonly Dictionary<string, List<int>> SLIDE_AREA_STEP_MAP = new Dictionary<string, List<int>>()
     {
         {"line3", new List<int>(){ 0, 2, 8, 13 } },
@@ -236,285 +133,42 @@ public class JsonDataLoader : MonoBehaviour
         {"pq7", new List<int>(){ 0, 3, 8, 12, 15, 18, 22, 25, 28, 32, 35, 39 } },
         {"pq8", new List<int>(){ 0, 3, 8, 11, 14, 17, 21, 24, 27, 30, 36 } },
         {"s", new List<int>(){ 0, 3, 8, 11, 17, 21, 24, 30 } },
-        {"wifi", new List<int>(){ 0, 1, 4, 6, 11 } },
+        {"wifi", new List<int>(){ 0, 3, 6, 7, 9, 11 } },
         {"L2", new List<int>(){ 0, 2, 7, 15, 21, 26, 32 } },
         {"L3", new List<int>(){ 0, 2, 8, 17, 20, 26, 29, 34 } },
         {"L4", new List<int>(){ 0, 2, 8, 17, 22, 26, 32 } },
         {"L5", new List<int>(){ 0, 2, 8, 16, 22, 28 } },
     };
-    private static readonly Dictionary<int, List<List<JudgeArea>>> WIFISLIDE_JUDGE_QUEUE = new Dictionary<int, List<List<JudgeArea>>>()
-    {
-        { 1,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B8, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B7, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, true },{SensorType.D6, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B1, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, true },{SensorType.B5, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B2, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B3, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, true },{SensorType.D5, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 2,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B1, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B8, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, true },{SensorType.D7, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B2, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, true },{SensorType.B6, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B3, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B4, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, true },{SensorType.D6, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 3,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B2, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B1, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, true },{SensorType.D8, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B3, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, true },{SensorType.B7, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B4, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B5, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, true },{SensorType.D7, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 4,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B3, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B2, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, true },{SensorType.D1, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B4, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, true },{SensorType.B8, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B5, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B6, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, true },{SensorType.D8, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 5,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B4, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B3, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, true },{SensorType.D2, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B5, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, true },{SensorType.B1, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B6, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B7, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, true },{SensorType.D1, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 6,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B5, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B4, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, true },{SensorType.D3, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B6, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, true },{SensorType.B2, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A6, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B7, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B8, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A1, true },{SensorType.D2, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 7,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B6, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B5, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, true },{SensorType.D4, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B7, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, true },{SensorType.B3, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A7, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B8, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B1, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A2, true },{SensorType.D3, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        },
-        { 8,
-            new List<List<JudgeArea>>()
-            {
-                new List<JudgeArea>() // L
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B7, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B6, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A5, true },{SensorType.D5, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // Center
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B8, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.C, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A4, true },{SensorType.B4, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                },
-                new List<JudgeArea>() // R
-                {
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A8, false } },SLIDE_AREA_STEP_MAP["wifi"][0]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B1, false } },SLIDE_AREA_STEP_MAP["wifi"][1]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.B2, false } },SLIDE_AREA_STEP_MAP["wifi"][2]),
-                    new JudgeArea(new Dictionary<SensorType, bool>(){ {SensorType.A3, true },{SensorType.D4, true }  },SLIDE_AREA_STEP_MAP["wifi"][3] ),
-                }
-            }
-        }
-    };
+
     // Start is called before the first frame update
     private void Start()
     {
         Application.targetFrameRate = 120;
         ObjectCounter = GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>();
         customSkin = GameObject.Find("Outline").GetComponent<CustomSkin>();
-        noteManager = GameObject.Find("Notes").GetComponent<NoteManager>();
     }
 
     // Update is called once per frame
     private void Update()
     {
-        switch(State)
-        {
-            case NoteLoaderStatus.LodingJson:
-                if (jsonLoaderTask is null || !jsonLoaderTask.IsCompleted)
-                    return;
-                loadedData = jsonLoaderTask.Result;
-                diffText.text = loadedData.difficulty;
-                levelText.text = loadedData.level;
-                titleText.text = loadedData.title;
-                artistText.text = loadedData.artist;
-                designText.text = loadedData.designer;
-                cardImage.color = diffColors[loadedData.diffNum];
-
-                CountNoteSum(loadedData);
-                var lastNoteTime = loadedData.timingList.Last().time;
-
-                noteParserTask = StartCoroutine(LoadNotes(loadedData.timingList, ignoreOffset, lastNoteTime));
-
-                State = NoteLoaderStatus.ParsingNote;
-                break;
-            case NoteLoaderStatus.ParsingNote:
-                if (noteParserTask == null)
-                {
-                    State = NoteLoaderStatus.Finished;
-                    //noteManager.Refresh();
-                    return;
-                }
-                break;
-        }
-
     }
-    IEnumerator LoadNotes(IEnumerable<SimaiTimingPoint> timingList, float ignoreOffset, double lastNoteTime)
-    {
-        noteManager.Refresh();
-        noteIndex.Clear();
-        touchIndex.Clear();
-        for (int i = 1; i < 9; i++)
-            noteIndex.Add(i, 0);
-        for (int i = 0; i < 33; i++)
-            touchIndex.Add((SensorType)i, 0);
 
-        Stopwatch sw = new();
-        sw.Start();
-        foreach (var timing in timingList)
-        {
-            if (sw.ElapsedMilliseconds >= 2)
-            {
-                yield return 0;
-                sw.Restart();
-            }
+    public void LoadJson(string json, float ignoreOffset)
+    {
+        var loadedData = JsonConvert.DeserializeObject<Majson>(json);
+
+        diffText.text = loadedData.difficulty;
+        levelText.text = loadedData.level;
+        titleText.text = loadedData.title;
+        artistText.text = loadedData.artist;
+        designText.text = loadedData.designer;
+        cardImage.color = diffColors[loadedData.diffNum];
+
+        CountNoteSum(loadedData);
+
+        var lastNoteTime = loadedData.timingList.Last().time;
+
+        foreach (var timing in loadedData.timingList)
             try
             {
                 if (timing.time < ignoreOffset)
@@ -522,56 +176,53 @@ public class JsonDataLoader : MonoBehaviour
                     CountNoteCount(timing.noteList);
                     continue;
                 }
-                List<TouchDrop> members = new();
+
                 for (var i = 0; i < timing.noteList.Count; i++)
                 {
                     var note = timing.noteList[i];
                     if (note.noteType == SimaiNoteType.Tap)
                     {
-                        GameObject GOnote = null;
-                        TapBase NDCompo = null;
-                        
-                        if (note.isForceStar)
-                        {
-                            GOnote = Instantiate(starPrefab, notes.transform);
-                            var _NDCompo = GOnote.GetComponent<StarDrop>();
-                            _NDCompo.tapSpr = customSkin.Star;
-                            _NDCompo.eachSpr = customSkin.Star_Each;
-                            _NDCompo.breakSpr = customSkin.Star_Break;
-                            _NDCompo.exSpr = customSkin.Star_Ex;
-                            _NDCompo.tapLine = starLine;
-                            _NDCompo.isFakeStarRotate = note.isFakeRotate;
-                            _NDCompo.isFakeStar = true;
-                            NDCompo = _NDCompo;
-                        }
-                        else
-                        {
-                            GOnote = Instantiate(tapPrefab, notes.transform);
-                            NDCompo = GOnote.GetComponent<TapDrop>();
-                            //自定义note样式
-                            NDCompo.tapSpr = customSkin.Tap;
-                            NDCompo.breakSpr = customSkin.Tap_Break;
-                            NDCompo.eachSpr = customSkin.Tap_Each;
-                            NDCompo.exSpr = customSkin.Tap_Ex;
-                        }
-                        noteManager.AddNote(GOnote, noteIndex[note.startPosition]++);
+                        var GOnote = Instantiate(tapPrefab, notes.transform);
+                        var NDCompo = GOnote.GetComponent<TapDrop>();
+
                         // note的图层顺序
                         NDCompo.noteSortOrder = noteSortOrder;
                         noteSortOrder -= NOTE_LAYER_COUNT[note.noteType];
 
+                        if (note.isForceStar)
+                        {
+                            NDCompo.normalSpr = customSkin.Star;
+                            NDCompo.eachSpr = customSkin.Star_Each;
+                            NDCompo.breakSpr = customSkin.Star_Break;
+                            NDCompo.exSpr = customSkin.Star_Ex;
+                            NDCompo.mineSpr = customSkin.Star_Mine;
+                            NDCompo.tapLine = starLine;
+                            NDCompo.isFakeStarRotate = note.isFakeRotate;
+                        }
+                        else
+                        {
+                            //自定义note样式
+                            NDCompo.normalSpr = customSkin.Tap;
+                            NDCompo.breakSpr = customSkin.Tap_Break;
+                            NDCompo.eachSpr = customSkin.Tap_Each;
+                            NDCompo.exSpr = customSkin.Tap_Ex;
+                            NDCompo.mineSpr = customSkin.Tap_Mine;
+                        }
+
                         NDCompo.BreakShine = BreakShine;
 
-                        if (timing.noteList.Count > 1) NDCompo.isEach = true;
+                        if (timing.noteList.FindAll(o => !o.isMine).Count > 1) NDCompo.isEach = true;
                         NDCompo.isBreak = note.isBreak;
                         NDCompo.isEX = note.isEx;
+                        NDCompo.isMine = note.isMine;
                         NDCompo.time = (float)timing.time;
                         NDCompo.startPosition = note.startPosition;
                         NDCompo.speed = noteSpeed * timing.HSpeed;
                     }
-                    else if (note.noteType == SimaiNoteType.Hold)
+
+                    if (note.noteType == SimaiNoteType.Hold)
                     {
                         var GOnote = Instantiate(holdPrefab, notes.transform);
-                        noteManager.AddNote(GOnote, noteIndex[note.startPosition]++);
                         var NDCompo = GOnote.GetComponent<HoldDrop>();
 
                         // note的图层顺序
@@ -579,47 +230,50 @@ public class JsonDataLoader : MonoBehaviour
                         noteSortOrder -= NOTE_LAYER_COUNT[note.noteType];
 
                         NDCompo.tapSpr = customSkin.Hold;
-                        NDCompo.holdOnSpr = customSkin.Hold_On;
-                        NDCompo.holdOffSpr = customSkin.Hold_Off;
                         NDCompo.eachSpr = customSkin.Hold_Each;
-                        NDCompo.eachHoldOnSpr = customSkin.Hold_Each_On;
                         NDCompo.exSpr = customSkin.Hold_Ex;
                         NDCompo.breakSpr = customSkin.Hold_Break;
-                        NDCompo.breakHoldOnSpr = customSkin.Hold_Break_On;
+                        NDCompo.mineSpr = customSkin.Hold_Mine;
 
                         NDCompo.HoldShine = HoldShine;
                         NDCompo.BreakShine = BreakShine;
 
-                        if (timing.noteList.Count > 1) NDCompo.isEach = true;
+                        if (timing.noteList.FindAll(o => !o.isMine).Count > 1) NDCompo.isEach = true;
                         NDCompo.time = (float)timing.time;
                         NDCompo.LastFor = (float)note.holdTime;
                         NDCompo.startPosition = note.startPosition;
                         NDCompo.speed = noteSpeed * timing.HSpeed;
                         NDCompo.isEX = note.isEx;
                         NDCompo.isBreak = note.isBreak;
+                        NDCompo.isMine = note.isMine;
                     }
-                    else if (note.noteType == SimaiNoteType.TouchHold)
+
+                    if (note.noteType == SimaiNoteType.TouchHold)
                     {
                         var GOnote = Instantiate(touchHoldPrefab, notes.transform);
-                        noteManager.AddTouch(GOnote, touchIndex[SensorType.C]++);
                         var NDCompo = GOnote.GetComponent<TouchHoldDrop>();
 
                         // note的图层顺序
                         NDCompo.noteSortOrder = noteSortOrder;
                         noteSortOrder -= NOTE_LAYER_COUNT[note.noteType];
 
+                        if (timing.noteList.FindAll(o => !o.isMine).Count > 1) NDCompo.isEach = true;
                         NDCompo.time = (float)timing.time;
                         NDCompo.LastFor = (float)note.holdTime;
                         NDCompo.speed = touchSpeed * timing.HSpeed;
                         NDCompo.isFirework = note.isHanabi;
+                        NDCompo.isMine = note.isMine;
 
                         Array.Copy(customSkin.TouchHold, NDCompo.TouchHoldSprite, 5);
+                        Array.Copy(customSkin.TouchHold_Mine, NDCompo.TouchHoldMineSprite, 5);
                         NDCompo.TouchPointSprite = customSkin.TouchPoint;
+                        NDCompo.TouchPointMineSprite = customSkin.TouchPoint_Mine;
+                        NDCompo.TouchPointEachSprite = customSkin.TouchPoint_Each;
                     }
-                    else if (note.noteType == SimaiNoteType.Touch)
+
+                    if (note.noteType == SimaiNoteType.Touch)
                     {
                         var GOnote = Instantiate(touchPrefab, notes.transform);
-                        noteManager.AddTouch(GOnote, touchIndex[TouchBase.GetSensor(note.touchArea, note.startPosition)]++);
                         var NDCompo = GOnote.GetComponent<TouchDrop>();
 
                         // note的图层顺序
@@ -632,73 +286,28 @@ public class JsonDataLoader : MonoBehaviour
 
                         NDCompo.fanNormalSprite = customSkin.Touch;
                         NDCompo.fanEachSprite = customSkin.Touch_Each;
+                        NDCompo.fanMineSprite = customSkin.Touch_Mine;
                         NDCompo.pointNormalSprite = customSkin.TouchPoint;
                         NDCompo.pointEachSprite = customSkin.TouchPoint_Each;
+                        NDCompo.pointMineSprite = customSkin.TouchPoint_Mine;
                         NDCompo.justSprite = customSkin.TouchJust;
                         Array.Copy(customSkin.TouchBorder, NDCompo.multTouchNormalSprite, 2);
                         Array.Copy(customSkin.TouchBorder_Each, NDCompo.multTouchEachSprite, 2);
+                        Array.Copy(customSkin.TouchBorder_Mine, NDCompo.multTouchMineSprite, 2);
 
-                        if (timing.noteList.Count > 1)
-                        {
+                        if (timing.noteList.FindAll(o => !o.isMine).Count > 1 && !NDCompo.isMine) 
                             NDCompo.isEach = true;
-                            members.Add(NDCompo);
-                        }
                         NDCompo.speed = touchSpeed * timing.HSpeed;
                         NDCompo.isFirework = note.isHanabi;
-                        NDCompo.GroupInfo = null;
+                        NDCompo.isMine = note.isMine;
                     }
 
-                    else if (note.noteType == SimaiNoteType.Slide)
+                    if (note.noteType == SimaiNoteType.Slide)
                         InstantiateStarGroup(timing, note, i, lastNoteTime); // 星星组
                 }
 
-
-                if (members.Count != 0)
-                {
-                    var sensorTypes = members.GroupBy(x => x.GetSensor())
-                                             .Select(x => x.Key)
-                                             .ToList();
-                    List<List<SensorType>> sensorGroups = new();
-
-                    while (sensorTypes.Count > 0)
-                    {
-                        var sensorType = sensorTypes[0];
-                        var existsGroup = sensorGroups.FindAll(x => x.Contains(sensorType));
-                        var groupMap = TOUCH_GROUPS[sensorType];
-                        existsGroup.AddRange(sensorGroups.FindAll(x => x.Any(y => groupMap.Contains(y))));
-
-                        var groupMembers = existsGroup.SelectMany(x => x)
-                                                      .ToList();
-                        var newMembers = sensorTypes.FindAll(x => groupMap.Contains(x));
-
-                        groupMembers.AddRange(newMembers);
-                        groupMembers.Add(sensorType);
-                        var newGroup = groupMembers.GroupBy(x => x)
-                                                   .Select(x => x.Key)
-                                                   .ToList();
-
-                        foreach (var newMember in newGroup)
-                            sensorTypes.Remove(newMember);
-                        foreach (var oldGroup in existsGroup)
-                            sensorGroups.Remove(oldGroup);
-
-                        sensorGroups.Add(newGroup);
-                    }
-                    List<TouchGroup> touchGroups = new();
-                    var memberMapping = members.ToDictionary(x => x.GetSensor());
-                    foreach (var group in sensorGroups)
-                    {
-                        touchGroups.Add(new TouchGroup()
-                        {
-                            Members = group.Select(x => memberMapping[x]).ToArray()
-                        });
-                    }
-                    foreach (var member in members)
-                        member.GroupInfo = touchGroups.Find(x => x.Members.Any(y => y == member));
-                }
-
                 var eachNotes = timing.noteList.FindAll(o =>
-                    o.noteType != SimaiNoteType.Touch && o.noteType != SimaiNoteType.TouchHold);
+                    o.noteType != SimaiNoteType.Touch && o.noteType != SimaiNoteType.TouchHold && !o.isMine);
                 if (eachNotes.Count > 1) //有多个非touchnote
                 {
                     var startPos = eachNotes[0].startPosition;
@@ -735,58 +344,69 @@ public class JsonDataLoader : MonoBehaviour
                 GameObject.Find("ErrText").GetComponent<Text>().text =
                     "在第" + (timing.rawTextPositionY + 1) + "行发现问题：\n" + e.Message;
             }
-        }
-        noteParserTask = null;
-        yield break;
-    }
-    public void LoadJson(string json, float ignoreOffset)
-    {
-        jsonLoaderTask = Task.Run(() => JsonConvert.DeserializeObject<Majson>(json));
-        State = NoteLoaderStatus.LodingJson;
-        this.ignoreOffset = ignoreOffset;
     }
 
 
     private void CountNoteSum(Majson json)
     {
         foreach (var timing in json.timingList)
-            foreach (var note in timing.noteList)
-                if (!note.isBreak)
+        foreach (var note in timing.noteList) { 
+            
+            if (!note.isBreak && !note.isMine)
+            {
+                if (note.noteType == SimaiNoteType.Tap) ObjectCounter.tapSum++;
+                if (note.noteType == SimaiNoteType.Hold) ObjectCounter.holdSum++;
+                if (note.noteType == SimaiNoteType.TouchHold) ObjectCounter.holdSum++;
+                if (note.noteType == SimaiNoteType.Touch) ObjectCounter.touchSum++;
+                if (note.noteType == SimaiNoteType.Slide)
                 {
-                    if (note.noteType == SimaiNoteType.Tap) ObjectCounter.tapSum++;
-                    if (note.noteType == SimaiNoteType.Hold) ObjectCounter.holdSum++;
-                    if (note.noteType == SimaiNoteType.TouchHold) ObjectCounter.holdSum++;
-                    if (note.noteType == SimaiNoteType.Touch) ObjectCounter.touchSum++;
-                    if (note.noteType == SimaiNoteType.Slide)
-                    {
-                        if (!note.isSlideNoHead) ObjectCounter.tapSum++;
-                        if (note.isSlideBreak)
-                            ObjectCounter.breakSum++;
-                        else
-                            ObjectCounter.slideSum++;
-                    }
+                    if (!note.isSlideNoHead) ObjectCounter.tapSum++;
+                    if (note.isSlideMine)
+                        ObjectCounter.mineSum++;
+                    else if (note.isSlideBreak)
+                        ObjectCounter.breakSum++;
+                    else
+                        ObjectCounter.slideSum++;
+                }
+            }
+            else if(note.isBreak)
+            {
+                if (note.noteType == SimaiNoteType.Slide)
+                {
+                    if (!note.isSlideNoHead) ObjectCounter.breakSum++;
+                    if (note.isSlideBreak)
+                        ObjectCounter.breakSum++;
+                    else
+                        ObjectCounter.slideSum++;
                 }
                 else
                 {
-                    if (note.noteType == SimaiNoteType.Slide)
-                    {
-                        if (!note.isSlideNoHead) ObjectCounter.breakSum++;
-                        if (note.isSlideBreak)
-                            ObjectCounter.breakSum++;
-                        else
-                            ObjectCounter.slideSum++;
-                    }
-                    else
-                    {
-                        ObjectCounter.breakSum++;
-                    }
+                    ObjectCounter.breakSum++;
                 }
+            }
+            else
+            {
+                if (note.noteType == SimaiNoteType.Slide)
+                {
+                    if (!note.isSlideNoHead) ObjectCounter.mineSum++;
+                    if (note.isSlideMine)
+                        ObjectCounter.mineSum++;
+                    else
+                        ObjectCounter.slideSum++;
+                }
+                else
+                {
+                    ObjectCounter.mineSum++;
+                }
+                }
+            }
     }
 
     private void CountNoteCount(List<SimaiNote> timing)
     {
         foreach (var note in timing)
-            if (!note.isBreak)
+        {
+            if (!note.isBreak && !note.isMine)
             {
                 if (note.noteType == SimaiNoteType.Tap) ObjectCounter.tapCount++;
                 if (note.noteType == SimaiNoteType.Hold) ObjectCounter.holdCount++;
@@ -795,13 +415,15 @@ public class JsonDataLoader : MonoBehaviour
                 if (note.noteType == SimaiNoteType.Slide)
                 {
                     if (!note.isSlideNoHead) ObjectCounter.tapCount++;
-                    if (note.isSlideBreak)
+                    if (note.isSlideMine)
+                        ObjectCounter.mineSum++;
+                    else if (note.isSlideBreak)
                         ObjectCounter.breakCount++;
                     else
                         ObjectCounter.slideCount++;
                 }
             }
-            else
+            else if (note.isBreak)
             {
                 if (note.noteType == SimaiNoteType.Slide)
                 {
@@ -816,6 +438,22 @@ public class JsonDataLoader : MonoBehaviour
                     ObjectCounter.breakCount++;
                 }
             }
+            else
+            {
+                if (note.noteType == SimaiNoteType.Slide)
+                {
+                    if (!note.isSlideNoHead) ObjectCounter.mineCount++;
+                    if (note.isSlideMine)
+                        ObjectCounter.mineCount++;
+                    else
+                        ObjectCounter.slideCount++;
+                }
+                else
+                {
+                    ObjectCounter.mineCount++;
+                }
+            }
+        }
     }
 
     private void InstantiateStarGroup(SimaiTimingPoint timing, SimaiNote note, int sort, double lastNoteTime)
@@ -917,7 +555,9 @@ public class JsonDataLoader : MonoBehaviour
         {
             o.isBreak = note.isBreak;
             o.isEx = note.isEx;
+            o.isMine = note.isMine;
             o.isSlideBreak = note.isSlideBreak;
+            o.isSlideMine = note.isSlideMine;
             o.isSlideNoHead = true;
         });
         subSlide[0].isSlideNoHead = note.isSlideNoHead;
@@ -986,44 +626,14 @@ public class JsonDataLoader : MonoBehaviour
             }
         }
 
-        GameObject parent = null;
-        List<SlideDrop> subSlides = new();
-        float totalLen = (float)subSlide.Select(x => x.slideTime).Sum();
-        float totalSlideLen = 0;
-        for (var i = 0; i <= subSlide.Count - 1; i++)
-        {
-            bool isConn = subSlide.Count != 1;
-            bool isGroupHead = i == 0;
-            bool isGroupEnd = i == subSlide.Count - 1;
+        for (var i = subSlide.Count - 1; i >= 0; i--)
             if (note.noteContent.Contains('w')) //wifi
-            {
-                if (isConn)
-                    throw new InvalidOperationException("不允许Wifi Slide作为Connection Slide的一部分");
-                InstantiateWifi(timing, subSlide[i]);
-            }
+                InstantiateWifi(timing, subSlide[i], i != 0, i == subSlide.Count - 1);
             else
-            {
-                ConnSlideInfo info = new ConnSlideInfo()
-                {
-                    TotalLength = totalLen,
-                    IsGroupPart = isConn,
-                    IsGroupPartHead = isGroupHead,
-                    IsGroupPartEnd = isGroupEnd,
-                    Parent = parent
-                };
-                parent = InstantiateStar(timing, subSlide[i], info);
-                subSlides.Add(parent.GetComponent<SlideDrop>());
-            }
-        }
-        subSlides.ForEach(s =>
-        {
-            s.Initialize();
-            totalSlideLen += s.GetSlideLength();
-        });
-        subSlides.ForEach(s => s.ConnectInfo.TotalSlideLen = totalSlideLen);
+                InstantiateStar(timing, subSlide[i], i != 0, i == subSlide.Count - 1);
     }
 
-    private GameObject InstantiateWifi(SimaiTimingPoint timing, SimaiNote note)
+    private void InstantiateWifi(SimaiTimingPoint timing, SimaiNote note, bool isGroupPart, bool isGroupPartEnd)
     {
         var str = note.noteContent.Substring(0, 3);
         var digits = str.Split('w');
@@ -1036,8 +646,6 @@ public class JsonDataLoader : MonoBehaviour
 
         var GOnote = Instantiate(starPrefab, notes.transform);
         var NDCompo = GOnote.GetComponent<StarDrop>();
-        noteManager.AddNote(GOnote, noteIndex[note.startPosition]++);
-
 
         // note的图层顺序
         NDCompo.noteSortOrder = noteSortOrder;
@@ -1045,10 +653,12 @@ public class JsonDataLoader : MonoBehaviour
 
         NDCompo.tapSpr = customSkin.Star;
         NDCompo.eachSpr = customSkin.Star_Each;
+        NDCompo.mineSpr = customSkin.Star_Mine;
         NDCompo.breakSpr = customSkin.Star_Break;
         NDCompo.exSpr = customSkin.Star_Ex;
 
         NDCompo.tapSpr_Double = customSkin.Star_Double;
+        NDCompo.mineSpr_Double = customSkin.Star_Mine_Double;
         NDCompo.eachSpr_Double = customSkin.Star_Each_Double;
         NDCompo.breakSpr_Double = customSkin.Star_Break_Double;
         NDCompo.exSpr_Double = customSkin.Star_Ex_Double;
@@ -1058,6 +668,7 @@ public class JsonDataLoader : MonoBehaviour
         NDCompo.rotateSpeed = (float)note.slideTime;
         NDCompo.isEX = note.isEx;
         NDCompo.isBreak = note.isBreak;
+        NDCompo.isMine = note.isMine;
 
         var slideWifi = Instantiate(slidePrefab[SLIDE_PREFAB_MAP["wifi"]], notes.transform);
         slideWifi.SetActive(false);
@@ -1066,25 +677,23 @@ public class JsonDataLoader : MonoBehaviour
 
         WifiCompo.normalStar = customSkin.Star;
         WifiCompo.eachStar = customSkin.Star_Each;
+        WifiCompo.mineStar = customSkin.Star_Mine;
         WifiCompo.breakStar = customSkin.Star_Break;
-        WifiCompo.judgeBreakShine = JudgeBreakShine;
-        WifiCompo.breakMaterial = breakMaterial;
         WifiCompo.slideShine = BreakShine;
         WifiCompo.areaStep = new List<int>(SLIDE_AREA_STEP_MAP["wifi"]);
-        WifiCompo.judgeQueues = new(WIFISLIDE_JUDGE_QUEUE[startPos]);
-        WifiCompo.slideConst = SLIDE_AREA_CONST["wifi"];
         WifiCompo.smoothSlideAnime = smoothSlideAnime;
 
         Array.Copy(customSkin.Wifi, WifiCompo.normalSlide, 11);
         Array.Copy(customSkin.Wifi_Each, WifiCompo.eachSlide, 11);
+        Array.Copy(customSkin.Wifi_Mine, WifiCompo.mineSlide, 11);
         Array.Copy(customSkin.Wifi_Break, WifiCompo.breakSlide, 11);
 
-        if (timing.noteList.Count > 1)
+        if (timing.noteList.FindAll(o => !o.isMine).Count > 1)
         {
             NDCompo.isEach = true;
             NDCompo.isDouble = false;
             if (timing.noteList.FindAll(
-                    o => o.noteType == SimaiNoteType.Slide).Count
+                    o => o.noteType == SimaiNoteType.Slide && !o.isSlideMine).Count
                 > 1)
                 WifiCompo.isEach = true;
             var count = timing.noteList.FindAll(
@@ -1093,7 +702,7 @@ public class JsonDataLoader : MonoBehaviour
             if (count > 1) //有同起点
             {
                 NDCompo.isDouble = true;
-                if (count == timing.noteList.Count)
+                if (count == timing.noteList.FindAll(o => !o.isMine).Count)
                     NDCompo.isEach = false;
                 else
                     NDCompo.isEach = true;
@@ -1101,44 +710,44 @@ public class JsonDataLoader : MonoBehaviour
         }
 
         WifiCompo.isBreak = note.isSlideBreak;
+        WifiCompo.isMine = note.isSlideMine;
+        WifiCompo.isGroupPart = isGroupPart;
+        WifiCompo.isGroupPartEnd = isGroupPartEnd;
 
         NDCompo.isNoHead = note.isSlideNoHead;
         NDCompo.time = (float)timing.time;
         NDCompo.startPosition = note.startPosition;
         NDCompo.speed = noteSpeed * timing.HSpeed;
 
-        WifiCompo.isJustR = detectJustType(note.noteContent, out endPos);
-        WifiCompo.endPosition = endPos;
+        WifiCompo.isJustR = detectJustType(note.noteContent);
         WifiCompo.speed = noteSpeed * timing.HSpeed;
         WifiCompo.timeStart = (float)timing.time;
         WifiCompo.startPosition = note.startPosition;
         WifiCompo.time = (float)note.slideStartTime;
         WifiCompo.LastFor = (float)note.slideTime;
         WifiCompo.sortIndex = slideLayer;
-        slideLayer -= SLIDE_AREA_STEP_MAP["wifi"].Last();
-        //slideLayer += 5;
-
-        return slideWifi;
+        slideLayer += 5;
     }
 
-    private GameObject InstantiateStar(SimaiTimingPoint timing, SimaiNote note, ConnSlideInfo info)
+    private void InstantiateStar(SimaiTimingPoint timing, SimaiNote note, bool isGroupPart, bool isGroupPartEnd)
     {
         var GOnote = Instantiate(starPrefab, notes.transform);
         var NDCompo = GOnote.GetComponent<StarDrop>();
-        if(!note.isSlideNoHead)
-            noteManager.AddNote(GOnote, noteIndex[note.startPosition]++);
+
         // note的图层顺序
         NDCompo.noteSortOrder = noteSortOrder;
         noteSortOrder -= NOTE_LAYER_COUNT[note.noteType];
 
         NDCompo.tapSpr = customSkin.Star;
         NDCompo.eachSpr = customSkin.Star_Each;
+        NDCompo.mineSpr = customSkin.Star_Mine;
         NDCompo.breakSpr = customSkin.Star_Break;
         NDCompo.exSpr = customSkin.Star_Ex;
 
         NDCompo.tapSpr_Double = customSkin.Star_Double;
         NDCompo.eachSpr_Double = customSkin.Star_Each_Double;
         NDCompo.breakSpr_Double = customSkin.Star_Break_Double;
+        NDCompo.mineSpr_Double = customSkin.Star_Mine_Double;
         NDCompo.exSpr_Double = customSkin.Star_Ex_Double;
 
         NDCompo.BreakShine = BreakShine;
@@ -1146,6 +755,7 @@ public class JsonDataLoader : MonoBehaviour
         NDCompo.rotateSpeed = (float)note.slideTime;
         NDCompo.isEX = note.isEx;
         NDCompo.isBreak = note.isBreak;
+        NDCompo.isMine = note.isMine;
 
         string slideShape = detectShapeFromText(note.noteContent);
         var isMirror = false;
@@ -1164,43 +774,45 @@ public class JsonDataLoader : MonoBehaviour
         NDCompo.slide = slide;
         var SliCompo = slide.AddComponent<SlideDrop>();
 
-        SliCompo.slideType = slideShape;
         SliCompo.spriteNormal = customSkin.Slide;
         SliCompo.spriteEach = customSkin.Slide_Each;
+        SliCompo.spriteMine = customSkin.Slide_Mine;
         SliCompo.spriteBreak = customSkin.Slide_Break;
         SliCompo.slideShine = BreakShine;
-        SliCompo.breakMaterial = breakMaterial;
-        SliCompo.judgeBreakShine = JudgeBreakShine;
         SliCompo.areaStep = new List<int>(SLIDE_AREA_STEP_MAP[slideShape]);
-        SliCompo.slideConst = SLIDE_AREA_CONST[slideShape];
         SliCompo.smoothSlideAnime = smoothSlideAnime;
 
-        if (timing.noteList.Count > 1)
+        if (timing.noteList.Count > 1)//当前时间找双押
         {
-            NDCompo.isEach = true;
-            if (timing.noteList.FindAll(o => o.noteType == SimaiNoteType.Slide).Count > 1)
+            if (timing.noteList.FindAll(o => !o.isMine).Count > 1) NDCompo.isEach = true;
+            if (timing.noteList.FindAll(//当前时间星星找双押
+                    o => o.noteType == SimaiNoteType.Slide && !o.isSlideMine).Count
+                > 1)
             {
                 SliCompo.isEach = true;
                 slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Each;
             }
 
-            var count = timing.noteList.FindAll(
+            var count = timing.noteList.FindAll(//找同头的
                 o => o.noteType == SimaiNoteType.Slide &&
-                     o.startPosition == note.startPosition).Count;
+                     o.startPosition == note.startPosition && !o.isSlideNoHead).Count;
             if (count > 1)
             {
                 NDCompo.isDouble = true;
-                if (count == timing.noteList.Count)
+                if (count == timing.noteList.Count)//只有这俩
                     NDCompo.isEach = false;
                 else
                     NDCompo.isEach = true;
             }
         }
 
-        SliCompo.ConnectInfo = info;
         SliCompo.isBreak = note.isSlideBreak;
-        if (note.isSlideBreak) slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Break;
-
+        SliCompo.isMine = note.isSlideMine;
+        SliCompo.isGroupPart = isGroupPart;
+        SliCompo.isGroupPartEnd = isGroupPartEnd;
+        if (note.isSlideMine) slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Mine;
+        else if (note.isSlideBreak) slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Break;
+        
         NDCompo.isNoHead = note.isSlideNoHead;
         NDCompo.time = (float)timing.time;
         NDCompo.startPosition = note.startPosition;
@@ -1208,8 +820,7 @@ public class JsonDataLoader : MonoBehaviour
 
 
         SliCompo.isMirror = isMirror;
-        SliCompo.isJustR = detectJustType(note.noteContent, out int endPos);
-        SliCompo.endPosition = endPos;
+        SliCompo.isJustR = detectJustType(note.noteContent);
         if (slideIndex - 26 > 0 && slideIndex - 26 <= 8)
         {
             // known slide sprite issue
@@ -1223,20 +834,19 @@ public class JsonDataLoader : MonoBehaviour
         {
             SliCompo.isSpecialFlip = isMirror;
         }
+
         SliCompo.speed = noteSpeed * timing.HSpeed;
-        SliCompo.timeStart = (float)timing.time;
+        SliCompo.timeStar = (float)timing.time;
         SliCompo.startPosition = note.startPosition;
         SliCompo.star_slide = slide_star;
         SliCompo.time = (float)note.slideStartTime;
         SliCompo.LastFor = (float)note.slideTime;
         //SliCompo.sortIndex = -7000 + (int)((lastNoteTime - timing.time) * -100) + sort * 5;
-        SliCompo.sortIndex = slideLayer;
-        slideLayer -= SLIDE_AREA_STEP_MAP[slideShape].Last();
-        //slideLayer += 5;
-        return slide;
+        SliCompo.sortIndex = slideLayer++;
+        slideLayer += 5;
     }
 
-    private bool detectJustType(string content, out int endPos)
+    private bool detectJustType(string content)
     {
         // > < ^ V w
         if (content.Contains('>'))
@@ -1244,7 +854,6 @@ public class JsonDataLoader : MonoBehaviour
             var str = content.Substring(0, 3);
             var digits = str.Split('>');
             var startPos = int.Parse(digits[0]);
-            endPos = int.Parse(digits[1]);
             if (isUpperHalf(startPos))
                 return true;
             return false;
@@ -1255,7 +864,6 @@ public class JsonDataLoader : MonoBehaviour
             var str = content.Substring(0, 3);
             var digits = str.Split('<');
             var startPos = int.Parse(digits[0]);
-            endPos = int.Parse(digits[1]);
             if (!isUpperHalf(startPos))
                 return true;
             return false;
@@ -1266,27 +874,20 @@ public class JsonDataLoader : MonoBehaviour
             var str = content.Substring(0, 3);
             var digits = str.Split('^');
             var startPos = int.Parse(digits[0]);
-            endPos = int.Parse(digits[1]);
+            var endPos = int.Parse(digits[1]);
             endPos = endPos - startPos;
             endPos = endPos < 0 ? endPos + 8 : endPos;
             endPos = endPos > 8 ? endPos - 8 : endPos;
 
             if (endPos < 4)
-            {
-                endPos = int.Parse(digits[1]);
                 return true;
-            }
-            if (endPos > 4)
-            {
-                endPos = int.Parse(digits[1]);
-                return false;
-            }
+            if (endPos > 4) return false;
         }
         else if (content.Contains('V'))
         {
             var str = content.Substring(0, 4);
             var digits = str.Split('V');
-            endPos = int.Parse(digits[1][1].ToString());
+            var endPos = int.Parse(digits[1][1].ToString());
 
             if (isRightHalf(endPos))
                 return true;
@@ -1295,14 +896,14 @@ public class JsonDataLoader : MonoBehaviour
         else if (content.Contains('w'))
         {
             var str = content.Substring(0, 3);
-            endPos = int.Parse(str.Substring(2, 1));
+            var endPos = int.Parse(str.Substring(2, 1));
             if (isUpperHalf(endPos))
                 return true;
             return false;
         }
         else
         {
-            //int endPos;
+            int endPos;
             if (content.Contains("qq") || content.Contains("pp"))
                 endPos = int.Parse(content.Substring(3, 1));
             else
@@ -1311,6 +912,7 @@ public class JsonDataLoader : MonoBehaviour
                 return true;
             return false;
         }
+
         return true;
     }
 

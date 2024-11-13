@@ -18,6 +18,7 @@ internal class SimaiTimingPoint
     public float HSpeed = 1.0f;
     public string noteContent;
     public List<SimaiNote> noteList = new();
+    public float SVeloc = 1.0f;
     public int rawTextPositionX;
     public int rawTextPositionY;
     public double time;
@@ -37,10 +38,12 @@ internal class SimaiNote
     public double holdTime = 0d;
     public bool isBreak = false;
     public bool isEx = false;
+    public bool isMine = false;
     public bool isFakeRotate = false;
     public bool isForceStar = false;
     public bool isHanabi = false;
     public bool isSlideBreak = false;
+    public bool isSlideMine = false;
     public bool isSlideNoHead = false;
 
     public string noteContent; //used for star explain
@@ -58,7 +61,6 @@ internal class EditRequestjson
     public float audioSpeed;
     public float backgroundCover;
     public EditorComboIndicator comboStatusType;
-    public EditorPlayMethod editorPlayMethod;
     public EditorControlMethod control;
     public string jsonPath;
     public float noteSpeed;
@@ -96,9 +98,4 @@ internal enum EditorControlMethod
     Pause,
     Continue,
     Record
-}
-
-public enum EditorPlayMethod
-{
-    Classic, DJAuto, Random, Disabled
 }

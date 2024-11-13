@@ -4,6 +4,8 @@ using UnityEngine;
 public class AudioTimeProvider : MonoBehaviour
 {
     public float AudioTime; //notes get this value
+    public float RealTime;
+    public float ScrollDist; //表示当前状况在正常流速且无SC下的时间，没有出现scene control的时候与Audio Time相同
     public bool isStart;
     public bool isRecord;
     public float offset;
@@ -13,6 +15,11 @@ public class AudioTimeProvider : MonoBehaviour
     private long ticks;
 
     public float CurrentSpeed => isRecord ? Time.timeScale : speed;
+
+    private void Start()
+    {
+
+    }
 
     // Update is called once per frame
     private void Update()
@@ -25,12 +32,7 @@ public class AudioTimeProvider : MonoBehaviour
                 AudioTime = (Time.realtimeSinceStartup - startTime) * speed + offset;
         }
     }
-    public float GetFrame()
-    {
-        var _audioTime = AudioTime * 1000;
 
-        return _audioTime / 16.6667f;
-    }
     public void SetStartTime(long _ticks, float _offset, float _speed, bool _isRecord = false)
     {
         ticks = _ticks;
