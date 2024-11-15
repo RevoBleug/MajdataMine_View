@@ -121,7 +121,7 @@ public class StarDrop : NoteDrop
                 animator = anim;
             }
         }
-
+        lineSpriteRender.forceRenderingOff = true;
         spriteRenderer.forceRenderingOff = true;
         exSpriteRender.forceRenderingOff = true;
     }
@@ -141,6 +141,7 @@ public class StarDrop : NoteDrop
 
         if (!isNoHead)
         {
+            lineSpriteRender.forceRenderingOff = false;
             spriteRenderer.forceRenderingOff = false;
             if (isEX) exSpriteRender.forceRenderingOff = false;
         }

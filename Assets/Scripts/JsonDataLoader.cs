@@ -33,6 +33,7 @@ public class JsonDataLoader : MonoBehaviour
     public RawImage cardImage;
     public Color[] diffColors = new Color[7];
     private CustomSkin customSkin;
+    private AudioTimeProvider timeProvider;
 
     private ObjectCounter ObjectCounter;
 
@@ -145,6 +146,7 @@ public class JsonDataLoader : MonoBehaviour
     {
         Application.targetFrameRate = 120;
         ObjectCounter = GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>();
+        timeProvider = GameObject.Find("AudioTimeProvider").GetComponent<AudioTimeProvider>();
         customSkin = GameObject.Find("Outline").GetComponent<CustomSkin>();
     }
 
@@ -171,6 +173,16 @@ public class JsonDataLoader : MonoBehaviour
         foreach (var timing in loadedData.timingList)
             try
             {
+                if (timeProvider.SVList.Count == 0)
+                {
+                    timeProvider.SVList.Add(timing.SVeloc);
+                    timeProvider.SVTime.Add(timing.time);
+                }
+                else if (timeProvider.SVList[timeProvider.SVList.Count - 1] != timing.SVeloc)
+                {
+                    timeProvider.SVList.Add(timing.SVeloc);
+                    timeProvider.SVTime.Add(timing.time);
+                }
                 if (timing.time < ignoreOffset)
                 {
                     CountNoteCount(timing.noteList);
@@ -307,7 +319,7 @@ public class JsonDataLoader : MonoBehaviour
                 }
 
                 var eachNotes = timing.noteList.FindAll(o =>
-                    o.noteType != SimaiNoteType.Touch && o.noteType != SimaiNoteType.TouchHold && !o.isMine);
+                    o.noteType != SimaiNoteType.Touch && o.noteType != SimaiNoteType.TouchHold && !o.isMine && !o.isSlideNoHead);
                 if (eachNotes.Count > 1) //有多个非touchnote
                 {
                     var startPos = eachNotes[0].startPosition;
@@ -688,14 +700,19 @@ public class JsonDataLoader : MonoBehaviour
         Array.Copy(customSkin.Wifi_Mine, WifiCompo.mineSlide, 11);
         Array.Copy(customSkin.Wifi_Break, WifiCompo.breakSlide, 11);
 
-        if (timing.noteList.FindAll(o => !o.isMine).Count > 1)
+        if (timing.noteList.Count > 1)
         {
-            NDCompo.isEach = true;
-            NDCompo.isDouble = false;
-            if (timing.noteList.FindAll(
+            if (timing.noteList.FindAll(o => !o.isMine && !o.isSlideNoHead).Count > 1)
+            {
+                NDCompo.isEach = true;
+                NDCompo.isDouble = false;
+            }
+            if (timing.noteList.FindAll(//当前时间星星找双押
                     o => o.noteType == SimaiNoteType.Slide && !o.isSlideMine).Count
                 > 1)
+            {
                 WifiCompo.isEach = true;
+            }
             var count = timing.noteList.FindAll(
                 o => o.noteType == SimaiNoteType.Slide &&
                      o.startPosition == note.startPosition).Count;
@@ -784,7 +801,7 @@ public class JsonDataLoader : MonoBehaviour
 
         if (timing.noteList.Count > 1)//当前时间找双押
         {
-            if (timing.noteList.FindAll(o => !o.isMine).Count > 1) NDCompo.isEach = true;
+            if (timing.noteList.FindAll(o => !o.isMine && !o.isSlideNoHead).Count > 1) NDCompo.isEach = true;
             if (timing.noteList.FindAll(//当前时间星星找双押
                     o => o.noteType == SimaiNoteType.Slide && !o.isSlideMine).Count
                 > 1)
@@ -795,11 +812,11 @@ public class JsonDataLoader : MonoBehaviour
 
             var count = timing.noteList.FindAll(//找同头的
                 o => o.noteType == SimaiNoteType.Slide &&
-                     o.startPosition == note.startPosition && !o.isSlideNoHead).Count;
+                     o.startPosition == note.startPosition).Count;
             if (count > 1)
             {
                 NDCompo.isDouble = true;
-                if (count == timing.noteList.Count)//只有这俩
+                if (count == timing.noteList.FindAll(o => !o.isMine).Count)//只有这俩
                     NDCompo.isEach = false;
                 else
                     NDCompo.isEach = true;

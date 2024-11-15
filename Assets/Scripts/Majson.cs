@@ -19,6 +19,7 @@ internal class SimaiTimingPoint
     public string noteContent;
     public List<SimaiNote> noteList = new();
     public float SVeloc = 1.0f;
+    public bool changeSV = false;
     public int rawTextPositionX;
     public int rawTextPositionY;
     public double time;
