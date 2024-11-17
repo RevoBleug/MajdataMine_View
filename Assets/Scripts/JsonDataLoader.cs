@@ -173,15 +173,11 @@ public class JsonDataLoader : MonoBehaviour
         foreach (var timing in loadedData.timingList)
             try
             {
-                if (timeProvider.SVList.Count == 0)
+                if (timeProvider.SVList.Count == 0 || timeProvider.SVList[timeProvider.SVList.Count - 1] != timing.SVeloc)
                 {
                     timeProvider.SVList.Add(timing.SVeloc);
-                    timeProvider.SVTime.Add(timing.time);
-                }
-                else if (timeProvider.SVList[timeProvider.SVList.Count - 1] != timing.SVeloc)
-                {
-                    timeProvider.SVList.Add(timing.SVeloc);
-                    timeProvider.SVTime.Add(timing.time);
+                    UnityEngine.Debug.Log(timing.SVeloc);
+                    timeProvider.SVTime.Add((float)timing.time);
                 }
                 if (timing.time < ignoreOffset)
                 {
@@ -227,6 +223,7 @@ public class JsonDataLoader : MonoBehaviour
                         NDCompo.isBreak = note.isBreak;
                         NDCompo.isEX = note.isEx;
                         NDCompo.isMine = note.isMine;
+                        NDCompo.canSVAffect = note.canSVAffect;
                         NDCompo.time = (float)timing.time;
                         NDCompo.startPosition = note.startPosition;
                         NDCompo.speed = noteSpeed * timing.HSpeed;
@@ -258,6 +255,7 @@ public class JsonDataLoader : MonoBehaviour
                         NDCompo.isEX = note.isEx;
                         NDCompo.isBreak = note.isBreak;
                         NDCompo.isMine = note.isMine;
+                        NDCompo.canSVAffect = note.canSVAffect;
                     }
 
                     if (note.noteType == SimaiNoteType.TouchHold)
@@ -281,6 +279,7 @@ public class JsonDataLoader : MonoBehaviour
                         NDCompo.TouchPointSprite = customSkin.TouchPoint;
                         NDCompo.TouchPointMineSprite = customSkin.TouchPoint_Mine;
                         NDCompo.TouchPointEachSprite = customSkin.TouchPoint_Each;
+                        NDCompo.canSVAffect = note.canSVAffect;
                     }
 
                     if (note.noteType == SimaiNoteType.Touch)
@@ -312,6 +311,7 @@ public class JsonDataLoader : MonoBehaviour
                         NDCompo.speed = touchSpeed * timing.HSpeed;
                         NDCompo.isFirework = note.isHanabi;
                         NDCompo.isMine = note.isMine;
+                        NDCompo.canSVAffect = note.canSVAffect;
                     }
 
                     if (note.noteType == SimaiNoteType.Slide)
@@ -332,6 +332,11 @@ public class JsonDataLoader : MonoBehaviour
 
                     lineDrop.time = (float)timing.time;
                     lineDrop.speed = noteSpeed * timing.HSpeed;
+                    lineDrop.canSVAffect = false;
+                    foreach (var eachNote in eachNotes)
+                    {
+                        lineDrop.canSVAffect = lineDrop.canSVAffect || eachNote.canSVAffect;
+                    }
 
                     endPos = endPos < 0 ? endPos + 8 : endPos;
                     endPos = endPos > 8 ? endPos - 8 : endPos;
@@ -571,8 +576,10 @@ public class JsonDataLoader : MonoBehaviour
             o.isSlideBreak = note.isSlideBreak;
             o.isSlideMine = note.isSlideMine;
             o.isSlideNoHead = true;
+            o.canSVAffect = note.canSVAffect;
         });
         subSlide[0].isSlideNoHead = note.isSlideNoHead;
+        //double wholetime = 0;
 
         if (specTimeFlag == 1 || specTimeFlag == 0)
             // 如果到结束还是1 那说明没有一个指定了时长 报错
@@ -589,6 +596,7 @@ public class JsonDataLoader : MonoBehaviour
                 subSlide[i].slideTime = (double)subBarCount[i] / sumBarCount * note.slideTime;
                 tempBarCount += subBarCount[i];
             }
+            //wholetime = note.slideTime;
         }
         else
         {
@@ -636,7 +644,12 @@ public class JsonDataLoader : MonoBehaviour
                 subSlide[i].slideTime = getTimeFromBeats(subSlide[i].noteContent, timing.currentBpm);
                 tempSlideTime += subSlide[i].slideTime;
             }
+            //wholetime = tempSlideTime;
         }
+        /*for (int i = 0; i < subSlide.Count; i++)
+        {
+            subSlide[i].lastSlideTime = wholetime;
+        }*/
 
         for (var i = subSlide.Count - 1; i >= 0; i--)
             if (note.noteContent.Contains('w')) //wifi
@@ -728,13 +741,16 @@ public class JsonDataLoader : MonoBehaviour
 
         WifiCompo.isBreak = note.isSlideBreak;
         WifiCompo.isMine = note.isSlideMine;
+        WifiCompo.canSVAffect = note.canSVAffect;
         WifiCompo.isGroupPart = isGroupPart;
         WifiCompo.isGroupPartEnd = isGroupPartEnd;
+        //WifiCompo.lastSlideTime = note.lastSlideTime;
 
         NDCompo.isNoHead = note.isSlideNoHead;
         NDCompo.time = (float)timing.time;
         NDCompo.startPosition = note.startPosition;
         NDCompo.speed = noteSpeed * timing.HSpeed;
+        NDCompo.canSVAffect = note.canSVAffect;
 
         WifiCompo.isJustR = detectJustType(note.noteContent);
         WifiCompo.speed = noteSpeed * timing.HSpeed;
@@ -773,6 +789,7 @@ public class JsonDataLoader : MonoBehaviour
         NDCompo.isEX = note.isEx;
         NDCompo.isBreak = note.isBreak;
         NDCompo.isMine = note.isMine;
+        NDCompo.canSVAffect = note.canSVAffect;
 
         string slideShape = detectShapeFromText(note.noteContent);
         var isMirror = false;
@@ -825,8 +842,10 @@ public class JsonDataLoader : MonoBehaviour
 
         SliCompo.isBreak = note.isSlideBreak;
         SliCompo.isMine = note.isSlideMine;
+        SliCompo.canSVAffect = note.canSVAffect;
         SliCompo.isGroupPart = isGroupPart;
         SliCompo.isGroupPartEnd = isGroupPartEnd;
+        //SliCompo.lastSlideTime = note.lastSlideTime;
         if (note.isSlideMine) slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Mine;
         else if (note.isSlideBreak) slide_star.GetComponent<SpriteRenderer>().sprite = customSkin.Star_Break;
         

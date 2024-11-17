@@ -30,6 +30,8 @@ public class WifiDrop : NoteLongDrop
     public bool isMine;
     public bool isGroupPart;
     public bool isGroupPartEnd;
+    public bool canSVAffect;
+    //public double lastSlideTime;
 
     public int startPosition = 1;
 
@@ -124,13 +126,25 @@ public class WifiDrop : NoteLongDrop
     // Update is called once per frame
     private void Update()
     {
-        var startiming = timeProvider.AudioTime - timeStart;
+        var startiming = timeProvider.ScrollDist - timeStart;
+        var realStart = timeProvider.AudioTime - timeStart;
+        if (!canSVAffect) startiming = realStart;
         if (startiming <= 0f)
         {
             var alpha = startiming * (speed / 3) + 1f;
             alpha = alpha > 1f ? 1f : alpha;
             alpha = alpha < 0f ? 0f : alpha;
             setSlideBarAlpha(alpha);
+            foreach (var star in star_slide)
+            {
+                if (star.activeSelf)
+                {
+                    star.SetActive(false);
+                    star.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f, 0f);
+                    foreach (var anim in animators) anim.enabled = false;
+                    startShining = false;
+                }
+            }
             return;
         }
 
@@ -149,7 +163,10 @@ public class WifiDrop : NoteLongDrop
         foreach (var star in star_slide)
             star.SetActive(true);
 
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - time;
+        var realtime = timeProvider.AudioTime - time;
+        
+        if (!canSVAffect) timing = realtime;
         if (timing <= 0f)
         {
             float alpha;
@@ -176,6 +193,9 @@ public class WifiDrop : NoteLongDrop
         {
             var process = (LastFor - timing) / LastFor;
             process = 1f - process;
+            var realPro = (LastFor - realtime) / LastFor;
+            realPro = 1f - realPro;
+            if (!canSVAffect) process = realPro;
             if (process > 1)
             {
                 foreach (GameObject obj in slideBars)
@@ -185,17 +205,22 @@ public class WifiDrop : NoteLongDrop
 
                 if (isGroupPartEnd)
                 {
-                    if(isMine) GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().mineCount++;
-                    else if (isBreak)
-                        GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().breakCount++;
-                    else
-                        GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().slideCount++;
+                    if (realPro > 1)
+                    {
+                        if (isMine) GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().mineCount++;
+                        else if (isBreak)
+                            GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().breakCount++;
+                        else
+                            GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().slideCount++;
+                    }
                     slideOK.SetActive(true);
                 }
-
-                for (var i = 0; i < star_slide.Length; i++)
-                    Destroy(star_slide[i]);
-                Destroy(gameObject);
+                if (realPro > 1)
+                {
+                    for (var i = 0; i < star_slide.Length; i++)
+                        Destroy(star_slide[i]);
+                    Destroy(gameObject);
+                }
             }
 
             var pos = (slideBars.Count - 1) * process;
@@ -218,7 +243,7 @@ public class WifiDrop : NoteLongDrop
                 star_slide[i].transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
             }
 
-            for (var i = 0; i < slideAreaIndex; i++) slideBars[i].SetActive(false);
+            if(realtime > 0f) for (var i = 0; i < slideAreaIndex; i++) slideBars[i].SetActive(false);
         }
     }
 

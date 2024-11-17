@@ -48,6 +48,7 @@ public class HttpHandler : MonoBehaviour
             loader.LoadJson(File.ReadAllText(data.jsonPath), data.startTime);
             GameObject.Find("Notes").GetComponent<PlayAllPerfect>().enabled = false;
             GameObject.Find("MultTouchHandler").GetComponent<MultTouchHandler>().clearSlots();
+            timeProvider.CalcSVPos();
 
             bgManager.LoadBGFromPath(new FileInfo(data.jsonPath).DirectoryName, data.audioSpeed);
             bgCover.color = new Color(0f, 0f, 0f, data.backgroundCover);
@@ -63,6 +64,7 @@ public class HttpHandler : MonoBehaviour
             objectCounter.ComboSetActive(data.comboStatusType);
             loader.LoadJson(File.ReadAllText(data.jsonPath), data.startTime);
             GameObject.Find("MultTouchHandler").GetComponent<MultTouchHandler>().clearSlots();
+            timeProvider.CalcSVPos();
 
             bgManager.LoadBGFromPath(new FileInfo(data.jsonPath).DirectoryName, data.audioSpeed);
             bgCover.color = new Color(0f, 0f, 0f, data.backgroundCover);
@@ -84,6 +86,7 @@ public class HttpHandler : MonoBehaviour
             screenRecorder.CutoffTime = getChartLength();
             screenRecorder.CutoffTime += 10f;
             screenRecorder.StartRecording(maidataPath);
+            timeProvider.CalcSVPos();
 
             bgManager.LoadBGFromPath(maidataPath, data.audioSpeed);
             bgCover.color = new Color(0f, 0f, 0f, data.backgroundCover);

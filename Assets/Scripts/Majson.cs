@@ -19,7 +19,6 @@ internal class SimaiTimingPoint
     public string noteContent;
     public List<SimaiNote> noteList = new();
     public float SVeloc = 1.0f;
-    public bool changeSV = false;
     public int rawTextPositionX;
     public int rawTextPositionY;
     public double time;
@@ -46,12 +45,14 @@ internal class SimaiNote
     public bool isSlideBreak = false;
     public bool isSlideMine = false;
     public bool isSlideNoHead = false;
+    public bool canSVAffect = true;
 
     public string noteContent; //used for star explain
     public SimaiNoteType noteType;
 
     public double slideStartTime = 0d;
     public double slideTime = 0d;
+    public double lastSlideTime = 0d;
 
     public int startPosition = 1; //键位（1-8）
     public char touchArea = ' ';

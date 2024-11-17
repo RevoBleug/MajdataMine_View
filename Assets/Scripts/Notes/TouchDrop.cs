@@ -8,6 +8,7 @@ public class TouchDrop : NoteDrop
     public bool isEach;
     public bool isFirework;
     public bool isMine;
+    public bool canSVAffect;
 
     public int startPosition;
 
@@ -52,7 +53,7 @@ public class TouchDrop : NoteDrop
         wholeDuration = 3.209385682f * Mathf.Pow(speed, -0.9549621752f);
         moveDuration = 0.8f * wholeDuration;
         displayDuration = 0.2f * wholeDuration;
-
+        
         var notes = GameObject.Find("Notes").transform;
         timeProvider = GameObject.Find("AudioTimeProvider").GetComponent<AudioTimeProvider>();
         multTouchHandler = GameObject.Find("MultTouchHandler").GetComponent<MultTouchHandler>();
@@ -98,14 +99,22 @@ public class TouchDrop : NoteDrop
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - time;
+        var realtime = timeProvider.AudioTime - time;
 
         //var timing = time;
         //var pow = Mathf.Pow(-timing * speed, 0.1f)-0.4f;
         var pow = -Mathf.Exp(8 * (timing * 0.4f / moveDuration) - 0.85f) + 0.42f;
+        var realPow = -Mathf.Exp(8 * (realtime * 0.4f / moveDuration) - 0.85f) + 0.42f;
         var distance = Mathf.Clamp(pow, 0f, 0.4f);
-
-        if (timing > 0.05f)
+        var realDistance = Mathf.Clamp(realPow, 0f, 0.4f);
+        if(!canSVAffect)
+        {
+            timing = realtime;
+            pow = realPow; 
+            distance = realDistance;
+        }
+        if (realtime > 0.05f)
         {
             multTouchHandler.cancelTouch(this);
             Instantiate(tapEffect, transform.position, transform.rotation);
@@ -120,7 +129,7 @@ public class TouchDrop : NoteDrop
             Destroy(gameObject);
         }
 
-        if (timing > 0f) justEffect.SetActive(true);
+        if (realtime > 0f) justEffect.SetActive(true);
 
         if (-timing <= wholeDuration && -timing > moveDuration)
         {
@@ -129,7 +138,6 @@ public class TouchDrop : NoteDrop
                 isStarted = true;
                 multTouchHandler.registerTouch(this);
             }
-
             SetfanColor(new Color(1f, 1f, 1f, Mathf.Clamp((wholeDuration + timing) / displayDuration, 0f, 1f)));
         }
         else if (-timing < moveDuration)
@@ -141,6 +149,12 @@ public class TouchDrop : NoteDrop
             }
 
             SetfanColor(Color.white);
+        }
+        else if (-timing > wholeDuration && isStarted)
+        {
+            isStarted = false;
+            multTouchHandler.cancelTouch(this);
+            SetfanColor(new Color(1f, 1f, 1f, 0f));
         }
 
         if (float.IsNaN(distance)) distance = 0f;

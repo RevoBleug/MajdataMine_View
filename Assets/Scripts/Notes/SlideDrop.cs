@@ -20,8 +20,9 @@ public class SlideDrop : NoteLongDrop
     public bool isEach;
     public bool isBreak;
     public bool isMine;
+    public bool canSVAffect;
     public bool isGroupPart;
-
+    public GameObject slideOK;
     public bool isGroupPartEnd;
 
     // public float time;
@@ -43,7 +44,7 @@ public class SlideDrop : NoteLongDrop
 
     private readonly List<Vector3> slidePositions = new();
     private readonly List<Quaternion> slideRotations = new();
-    private GameObject slideOK;
+    //public double lastSlideTime;
 
     private SpriteRenderer spriteRenderer_star;
 
@@ -59,13 +60,25 @@ public class SlideDrop : NoteLongDrop
     // Update is called once per frame
     private void Update()
     {
-        var startiming = timeProvider.AudioTime - timeStar;
+        var startiming = timeProvider.AudioTime - timeProvider.GetPositionAtTime(timeStar);
+        if (canSVAffect)
+        {
+            startiming = timeProvider.ScrollDist - timeStar;
+        }
+
         if (startiming <= 0f)
         {
             var alpha = startiming * (speed / 3) + 1f;
             alpha = alpha > 1f ? 1f : alpha;
             alpha = alpha < 0f ? 0f : alpha;
             setSlideBarAlpha(alpha);
+            if (star_slide.activeSelf) 
+            { 
+                star_slide.SetActive(false);
+                spriteRenderer_star.color = new Color(1, 1, 1, 0);
+                foreach (var anim in animators) anim.enabled = false;
+                startShining = false;
+            }
             return;
         }
 
@@ -82,7 +95,14 @@ public class SlideDrop : NoteLongDrop
         }
 
         star_slide.SetActive(true);
-        var timing = timeProvider.AudioTime - time;
+
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
+        var realtime = timeProvider.AudioTime - time;
+        if (canSVAffect)
+        {
+            timing = realtime;
+        }
+
         if (timing <= 0f)
         {
             float alpha;
@@ -111,9 +131,12 @@ public class SlideDrop : NoteLongDrop
 
             var process = (LastFor - timing) / LastFor;
             process = 1f - process;
+            var realPro = (LastFor - realtime) / LastFor;
+            realPro = 1f - realPro;
+            /*var desTime = (lastSlideTime - realtime) / lastSlideTime;
+            desTime = 1f - desTime;*/
             if (process > 1)
             {
-                // TODO: FES星星最后一个判定区箭头的消失效果
                 foreach (GameObject obj in slideBars)
                 {
                     obj.SetActive(false);
@@ -121,23 +144,28 @@ public class SlideDrop : NoteLongDrop
 
                 if (isGroupPartEnd)
                 {
-                    // 只有组内最后一个Slide完成 才会显示判定条并增加总数
-                    if (isMine)
-                        GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().mineCount++;
-                    else if (isBreak)
-                        GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().breakCount++;
-                    else
-                        GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().slideCount++;
+                    if (realPro > 1)
+                    {
+                        // 只有组内最后一个Slide完成 才会显示判定条并增加总数
+                        if (isMine)
+                            GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().mineCount++;
+                        else if (isBreak)
+                            GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().breakCount++;
+                        else
+                            GameObject.Find("ObjectCounter").GetComponent<ObjectCounter>().slideCount++;
+                    }
                     slideOK.SetActive(true);
                 }
                 else
                 {
-                    // 如果不是组内最后一个 那么也要将判定条删掉
                     Destroy(slideOK);
                 }
-
-                Destroy(star_slide);
-                Destroy(gameObject);
+                if (realPro > 1)
+                {
+                    
+                    Destroy(star_slide);
+                    Destroy(gameObject);
+                }
             }
 
             //print(process);
@@ -168,14 +196,14 @@ public class SlideDrop : NoteLongDrop
                             slideRotations[index + 1].eulerAngles.z, delta)
                     )
                 );
-                for (var i = 0; i < slideAreaIndex; i++) slideBars[i].SetActive(false);
+                if (realtime > 0f) for (var i = 0; i < slideAreaIndex; i++) slideBars[i].SetActive(false);
             }
             catch
             {
             }
         }
     }
-
+    
     private void OnEnable()
     {
         slideOK = transform.GetChild(transform.childCount - 1).gameObject; //slideok is the last one

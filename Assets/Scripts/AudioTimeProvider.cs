@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public class AudioTimeProvider : MonoBehaviour
 {
     public float AudioTime; //notes get this value
-    public List<double> SVList = new();
-    public List<double> SVTime = new();
-    private List<Func<double, double>> positionFunctions = new List<Func<double, double>>();
-    private List<double> segmentStarts = new List<double>();
-    public double ScrollDist; //表示当前状况在正常流速且无SC下的时间，没有出现scene control的时候与Audio Time相同
+    public List<float> SVList = new();
+    public List<float> SVTime = new();
+    private List<Func<float, float>> positionFunctions = new List<Func<float, float>>();
+    private List<float> segmentStarts = new List<float>();
+    public float ScrollDist; //表示当前状况在正常流速且无SC下的时间，没有出现scene control的时候与Audio Time相同
     public bool isStart;
     public bool isRecord;
     public float offset;
@@ -70,44 +72,75 @@ public class AudioTimeProvider : MonoBehaviour
 
     public void CalcSVPos()
     {
-        double lastPosition = 0;
-        double lastTime = 0;
-        double lastSpeed = 1;
-        positionFunctions.Add((t) => lastPosition + lastSpeed * (t - lastTime));
-        segmentStarts.Add(lastPosition);
-        for (int i = 0; i < SVTime.Count; i++)
+        // 初始化变量
+        float lastPosition = 0f;
+        float lastTime = 0f;
+        float lastSpeed = 1f;
+
+        positionFunctions.Clear();
+        segmentStarts.Clear();
+        if (SVTime.Count == 1 && SVList.Count == 1)
         {
-            double segmentDuration = SVTime[i] - lastTime;  // 当前区间持续的时间
-            double speed = SVList[i];  // 当前区间的速度
-
-            // 创建分段函数：Position(t) = Position_i + Speed_i * (t - SVTime[i])
-            Func<double, double> segmentFunction = (t) =>
+            if (SVTime[0] > 0)
             {
-                return lastPosition + lastSpeed * (t - lastTime);
+                positionFunctions.Add((t) => t);
+                segmentStarts.Add(0);
+                lastPosition = SVTime[0];
+                lastTime = SVTime[0];
+            }
+            positionFunctions.Add((t) => lastPosition + SVList[0] * (t - lastTime));
+            segmentStarts.Add(lastPosition);
+            UnityEngine.Debug.Log($"Single Segment Case: Start = {lastPosition}, Speed = {SVList[0]}");
+            return;
+        }
+        positionFunctions.Add((t) => t);
+        segmentStarts.Add(0);
+        for (int i = 0; i < SVTime.Count - 1; i++)
+        {
+            float segmentDuration = SVTime[i] - lastTime; // 上一个区间的持续时间
+            lastPosition += lastSpeed * segmentDuration; // 计算上一个区间结束时的累积位置
+            float speed = SVList[i]; // 当前区间的速度
+            lastSpeed = speed; // 更新速度
+            lastTime = SVTime[i]; // 更新上一个时间点
+            // 创建分段函数：Position(t) = Position_i + Speed_i * (t - SVTime[i])
+            UnityEngine.Debug.Log($"Segment Case {i}: startTime = {lastTime}, Start = {lastPosition}, Speed = {lastSpeed}");
+            float lP = lastPosition;
+            float lS = lastSpeed;
+            float lT = lastTime;
+            Func<float, float> segmentFunction = (t) =>
+            {
+                return lP + lS * (t - lT);
             };
-
             positionFunctions.Add(segmentFunction);
             segmentStarts.Add(lastPosition);
-            lastPosition += lastSpeed * segmentDuration;
-            lastTime = SVTime[i];
-            lastSpeed = speed;
+            
         }
+        lastPosition += lastSpeed * (SVTime[SVTime.Count - 1] - lastTime);
+        lastTime = SVTime[SVTime.Count - 1];
+        lastSpeed = SVList[SVList.Count - 1];
+        float llP = lastPosition;
+        float llS = lastSpeed;
+        float llT = lastTime;
+        positionFunctions.Add((t) => llP + llS * (t - llT));
+        segmentStarts.Add(lastPosition);
+        UnityEngine.Debug.Log($"Segment Case Last: StartTime = {lastTime}, Start = {lastPosition}, Speed = {lastSpeed}");
     }
 
-    public double GetPositionAtTime(double AudioT)
+
+    public float GetPositionAtTime(float AudioT)
     {
-        // 如果 AudioT 小于第一个速度变化时刻，直接用初始速度计算位置
+        if (SVTime.Count == 0)
+            return AudioT;
         if (AudioT < SVTime[0])
             return AudioT;
-        // 查找对应的区间
+        if (AudioT >= SVTime[SVTime.Count - 1])
+            return positionFunctions[SVTime.Count](AudioT);
         for (int i = 0; i < SVTime.Count; i++)
         {
             if (AudioT < SVTime[i])
-            {
-                // 找到对应的区间，计算位置
                 return positionFunctions[i](AudioT);
-            }
         }
-        return positionFunctions[SVTime.Count - 1](AudioT);
+        return positionFunctions[SVTime.Count](AudioT);
     }
+
 }

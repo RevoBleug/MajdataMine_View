@@ -6,6 +6,7 @@ public class EachLineDrop : MonoBehaviour
     public int startPosition = 1;
     public int curvLength = 1;
     public float speed = 1;
+    public bool canSVAffect;
 
     public Sprite[] curvSprites;
     private SpriteRenderer sr;
@@ -25,10 +26,11 @@ public class EachLineDrop : MonoBehaviour
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - time;
+        var realtime = timeProvider.AudioTime - time;
         var distance = timing * speed + 4.8f;
         var destScale = distance * 0.4f + 0.51f;
-        if (timing > 0) Destroy(gameObject);
+        if (realtime > 0) Destroy(gameObject);
         if (distance < 1.225f)
         {
             distance = 1.225f;

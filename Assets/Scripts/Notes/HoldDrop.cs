@@ -2,8 +2,6 @@
 
 public class HoldDrop : NoteLongDrop
 {
-    // public float time;
-    // public float LastFor = 1f;
     public int startPosition = 1;
     public float speed = 1;
 
@@ -11,6 +9,7 @@ public class HoldDrop : NoteLongDrop
     public bool isEX;
     public bool isMine;
     public bool isBreak;
+    public bool canSVAffect;
 
     public Sprite tapSpr;
     public Sprite eachSpr;
@@ -102,13 +101,21 @@ public class HoldDrop : NoteLongDrop
         spriteRenderer.forceRenderingOff = true;
         exSpriteRender.forceRenderingOff = true;
         holdEndRender.enabled = false;
+        
     }
 
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
+        var realtime = timeProvider.AudioTime - time;
         var distance = timing * speed + 4.8f;
+        var realDistance = realtime * speed + 4.8f;
+        if(!canSVAffect)
+        {
+            timing = realtime;
+            distance = realDistance;
+        }
         var destScale = distance * 0.4f + 0.51f;
         if (destScale < 0f)
         {
@@ -128,9 +135,16 @@ public class HoldDrop : NoteLongDrop
 
         spriteRenderer.size = new Vector2(1.22f, 1.4f);
 
-        var holdTime = timing - LastFor;
+        var holdTime = timing - timeProvider.GetPositionAtTime(time + LastFor) + timeProvider.GetPositionAtTime(time);
+        var holdReal = realtime - LastFor;
         var holdDistance = holdTime * speed + 4.8f;
-        if (holdTime > 0)
+        var holdRealDistance = holdReal * speed + 4.8f;
+        if (!canSVAffect)
+        {
+            holdTime = holdReal;
+            holdDistance = holdRealDistance;
+        }
+        if (holdReal > 0)
         {
             GameObject.Find("NoteEffects").GetComponent<NoteEffectManager>().PlayEffect(startPosition, isBreak);
             if (isMine)
@@ -161,8 +175,9 @@ public class HoldDrop : NoteLongDrop
         }
         else
         {
-            if (holdDistance < 1.225f && distance >= 4.8f) // 头到达 尾未出现
+            if (holdDistance < 1.225f && distance >= 4.8f && realDistance >= 4.8f) // 头到达 尾未出现
             {
+                holdEndRender.enabled = false;
                 holdDistance = 1.225f;
                 distance = 4.8f;
                 holdEffect.SetActive(true);
@@ -172,7 +187,7 @@ public class HoldDrop : NoteLongDrop
             {
                 holdDistance = 1.225f;
             }
-            else if (holdDistance >= 1.225f && distance >= 4.8f) // 头到达 尾出现
+            else if (holdDistance >= 1.225f && distance >= 4.8f && realDistance >= 4.8f) // 头到达 尾出现
             {
                 distance = 4.8f;
                 holdEffect.SetActive(true);

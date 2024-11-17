@@ -1,4 +1,5 @@
-﻿using System.Net.NetworkInformation;
+﻿using System.Diagnostics;
+using System.Net.NetworkInformation;
 using UnityEngine;
 
 public class TapDrop : NoteDrop
@@ -13,6 +14,7 @@ public class TapDrop : NoteDrop
     public bool isEX;
     public bool isMine;
     public bool isFakeStarRotate;
+    public bool canSVAffect;
 
     public Sprite normalSpr;
     public Sprite eachSpr;
@@ -95,8 +97,15 @@ public class TapDrop : NoteDrop
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
+        var realtime = timeProvider.AudioTime - time;
         var distance = timing * speed + 4.8f;
+        var realDistance = realtime * speed + 4.8f;
+        if(!canSVAffect)
+        {
+            timing = realtime;
+            distance = realDistance;
+        }
         var destScale = distance * 0.4f + 0.51f;
         if (destScale < 0f)
         {
@@ -113,7 +122,7 @@ public class TapDrop : NoteDrop
             animator.Play("BreakShine", -1, 0.5f);
         }
 
-        if (timing > 0)
+        if (realtime > 0)
         {
             GameObject.Find("NoteEffects").GetComponent<NoteEffectManager>().PlayEffect(startPosition, isBreak);
             if (isMine) ObjectCounter.mineCount++;

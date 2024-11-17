@@ -8,6 +8,7 @@ public class TouchHoldDrop : NoteLongDrop
     public bool isFirework;
     public bool isMine;
     public bool isEach;
+    public bool canSVAffect;
 
     public GameObject tapEffect;
     public GameObject holdEffect;
@@ -74,11 +75,19 @@ public class TouchHoldDrop : NoteLongDrop
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - time;
+        var realtime = timeProvider.AudioTime - time;
         //var pow = Mathf.Pow(-timing * speed, 0.1f) - 0.4f;
         var pow = -Mathf.Exp(8 * (timing * 0.4f / moveDuration) - 0.85f) + 0.42f;
         var distance = Mathf.Clamp(pow, 0f, 0.4f);
-
+        var realPow = -Mathf.Exp(8 * (realtime * 0.4f / moveDuration) - 0.85f) + 0.42f;
+        var realDistance = Mathf.Clamp(realPow, 0f, 0.4f);
+        if(!canSVAffect)
+        {
+            timing = realtime;
+            pow = realPow; 
+            distance = realDistance;
+        }
         if (timing > LastFor)
         {
             Instantiate(tapEffect, transform.position, transform.rotation);
@@ -100,16 +109,21 @@ public class TouchHoldDrop : NoteLongDrop
             fans[5].SetActive(false);
             mask.enabled = false;
         }
-        else if (-timing < moveDuration)
+        else if (-timing < moveDuration && -realtime < moveDuration)
         {
             fans[5].SetActive(true);
             mask.enabled = true;
             SetfanColor(Color.white);
             mask.alphaCutoff = Mathf.Clamp(0.91f * (1 - (LastFor - timing) / LastFor), 0f, 1f);
         }
+        else if(-timing > wholeDuration)
+        {
+            SetfanColor(new Color(1f, 1f, 1f, 0f));
+            mask.enabled = false;
+        }
 
         if (float.IsNaN(distance)) distance = 0f;
-        if (distance == 0f) holdEffect.SetActive(true);
+        if (distance == 0f && realDistance == 0f) holdEffect.SetActive(true);
         for (var i = 0; i < 4; i++)
         {
             var pos = (0.226f + distance) * GetAngle(i);

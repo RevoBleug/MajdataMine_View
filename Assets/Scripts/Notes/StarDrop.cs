@@ -14,6 +14,7 @@ public class StarDrop : NoteDrop
     public bool isEX;
     public bool isNoHead;
     public bool isMine;
+    public bool canSVAffect;
 
     public Sprite tapSpr;
     public Sprite eachSpr;
@@ -129,8 +130,15 @@ public class StarDrop : NoteDrop
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.AudioTime - time;
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
+        var realtime = timeProvider.AudioTime - time;
         var distance = timing * speed + 4.8f;
+        var realDistance = realtime * speed + 4.8f;
+        if (!canSVAffect)
+        {
+            timing = realtime;
+            distance = realDistance;
+        }
         var destScale = distance * 0.4f + 0.51f;
         var songSpeed = timeProvider.CurrentSpeed;
         if (destScale < 0f)
@@ -153,7 +161,7 @@ public class StarDrop : NoteDrop
             animator.Play("BreakShine", -1, 0.5f);
         }
 
-        if (timing > 0)
+        if (realtime > 0)
         {
             if (!isNoHead)
             {
@@ -184,7 +192,7 @@ public class StarDrop : NoteDrop
         }
         else
         {
-            if (!slide.activeSelf) slide.SetActive(true);
+            if (!slide.activeSelf && realDistance > 1.225f) slide.SetActive(true);
             var pos = getPositionFromDistance(distance);
             transform.position = pos;
             transform.localScale = new Vector3(1f, 1f);
