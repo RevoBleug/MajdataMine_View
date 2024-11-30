@@ -99,12 +99,13 @@ public class TouchDrop : NoteDrop
     // Update is called once per frame
     private void Update()
     {
-        var timing = timeProvider.ScrollDist - time;
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
         var realtime = timeProvider.AudioTime - time;
+        var fakeMove = timeProvider.GetPositionAtTime(time + moveDuration) - timeProvider.GetPositionAtTime(time);
 
         //var timing = time;
         //var pow = Mathf.Pow(-timing * speed, 0.1f)-0.4f;
-        var pow = -Mathf.Exp(8 * (timing * 0.4f / moveDuration) - 0.85f) + 0.42f;
+        var pow = -Mathf.Exp(8 * (timing * 0.4f / fakeMove) - 0.85f) + 0.42f;
         var realPow = -Mathf.Exp(8 * (realtime * 0.4f / moveDuration) - 0.85f) + 0.42f;
         var distance = Mathf.Clamp(pow, 0f, 0.4f);
         var realDistance = Mathf.Clamp(realPow, 0f, 0.4f);
@@ -128,7 +129,10 @@ public class TouchDrop : NoteDrop
 
             Destroy(gameObject);
         }
-
+        else if(timing > 0.05f)
+        {
+            SetfanColor(new Color(1f, 1f, 1f, 0f));
+        }
         if (realtime > 0f) justEffect.SetActive(true);
 
         if (-timing <= wholeDuration && -timing > moveDuration)

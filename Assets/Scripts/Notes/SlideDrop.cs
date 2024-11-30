@@ -60,10 +60,10 @@ public class SlideDrop : NoteLongDrop
     // Update is called once per frame
     private void Update()
     {
-        var startiming = timeProvider.AudioTime - timeProvider.GetPositionAtTime(timeStar);
+        var startiming = timeProvider.AudioTime - timeStar;
         if (canSVAffect)
         {
-            startiming = timeProvider.ScrollDist - timeStar;
+            startiming = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(timeStar);
         }
 
         if (startiming <= 0f)
@@ -98,7 +98,7 @@ public class SlideDrop : NoteLongDrop
 
         var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
         var realtime = timeProvider.AudioTime - time;
-        if (canSVAffect)
+        if (!canSVAffect)
         {
             timing = realtime;
         }
@@ -129,12 +129,15 @@ public class SlideDrop : NoteLongDrop
             spriteRenderer_star.color = Color.white;
             star_slide.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
 
-            var process = (LastFor - timing) / LastFor;
+            var lastScroll = timeProvider.GetPositionAtTime(time + LastFor) - timeProvider.GetPositionAtTime(time);
+            var process = (lastScroll - timing) / LastFor;
             process = 1f - process;
             var realPro = (LastFor - realtime) / LastFor;
             realPro = 1f - realPro;
-            /*var desTime = (lastSlideTime - realtime) / lastSlideTime;
-            desTime = 1f - desTime;*/
+            if(!canSVAffect)
+            {
+                process = realPro;
+            }
             if (process > 1)
             {
                 foreach (GameObject obj in slideBars)

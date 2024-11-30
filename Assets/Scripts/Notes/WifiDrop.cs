@@ -126,9 +126,9 @@ public class WifiDrop : NoteLongDrop
     // Update is called once per frame
     private void Update()
     {
-        var startiming = timeProvider.ScrollDist - timeStart;
-        var realStart = timeProvider.AudioTime - timeStart;
-        if (!canSVAffect) startiming = realStart;
+        var startiming = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(timeStart);
+        var realStar = timeProvider.AudioTime - timeStart;
+        if (!canSVAffect) startiming = realStar;
         if (startiming <= 0f)
         {
             var alpha = startiming * (speed / 3) + 1f;
@@ -163,7 +163,7 @@ public class WifiDrop : NoteLongDrop
         foreach (var star in star_slide)
             star.SetActive(true);
 
-        var timing = timeProvider.ScrollDist - time;
+        var timing = timeProvider.ScrollDist - timeProvider.GetPositionAtTime(time);
         var realtime = timeProvider.AudioTime - time;
         
         if (!canSVAffect) timing = realtime;

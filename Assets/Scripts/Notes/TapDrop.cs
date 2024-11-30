@@ -110,6 +110,7 @@ public class TapDrop : NoteDrop
         if (destScale < 0f)
         {
             destScale = 0f;
+            tapLine.SetActive(false);
             return;
         }
 
